@@ -1,5 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { ZodError, type z } from "zod";
 import { AiResponseError, AiUnavailableError } from "./ai";
 
@@ -18,6 +19,24 @@ export function errorResponse(error: unknown) {
     return NextResponse.json(
       { error: "Requête invalide.", code: "bad_request", details: error.flatten() },
       { status: 400 },
+    );
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    console.error(error);
+    return NextResponse.json(
+      {
+        error:
+          "Base de données inaccessible : vérifie DATABASE_URL et DATABASE_URL_UNPOOLED dans les variables d'environnement.",
+        code: "db_unavailable",
+      },
+      { status: 503 },
+    );
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022")) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Les tables n'existent pas encore : lance « npm run db:push ».", code: "db_schema" },
+      { status: 503 },
     );
   }
   const status = (error as { status?: number })?.status;

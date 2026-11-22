@@ -30,24 +30,35 @@ L'arabe a droit à un traitement à part : alphabet interactif, translittératio
 
 - [Next.js 15](https://nextjs.org) (App Router) + React 19 + TypeScript strict
 - [Tailwind CSS 4](https://tailwindcss.com)
-- [Prisma](https://www.prisma.io) + SQLite (aucun serveur de base de données à installer)
+- [Prisma](https://www.prisma.io) + PostgreSQL (Neon gratuit via Vercel, ou Supabase)
 - [API Claude](https://docs.claude.com) (`@anthropic-ai/sdk`) avec sorties structurées validées par [Zod](https://zod.dev)
 - Web Speech API du navigateur pour la voix (synthèse et reconnaissance)
 
 ## Installation
 
-Prérequis : Node.js 20 ou plus récent.
+Prérequis : Node.js 20 ou plus récent, et une base PostgreSQL (Neon gratuit, voir plus bas).
 
 ```bash
 git clone https://github.com/yuku-ent/polyglotte.git
 cd polyglotte
 npm install
-cp .env.example .env        # puis colle ta clé ANTHROPIC_API_KEY dans .env
-npm run db:setup            # crée la base SQLite
+cp .env.example .env        # remplis DATABASE_URL, DATABASE_URL_UNPOOLED et ANTHROPIC_API_KEY
+npm run db:push             # crée les tables
 npm run dev
 ```
 
 Ouvre ensuite <http://localhost:3000>.
+
+## Mise en ligne sur Vercel
+
+1. Importe le dépôt GitHub dans Vercel.
+2. Dans le projet Vercel : **Storage > Create Database > Neon** (gratuit), puis connecte-la au projet. Vercel ajoute `DATABASE_URL` et `DATABASE_URL_UNPOOLED` tout seul.
+3. **Settings > Environment Variables** : ajoute `ANTHROPIC_API_KEY` et `APP_PASSWORD`.
+4. **Deployments > Redeploy**. Le build crée les tables automatiquement (`prisma db push`).
+
+`APP_PASSWORD` protège l'appli : sans lui, toute personne qui a le lien utilise ton profil et ta clé API.
+
+Pour travailler en local avec la même base, copie les deux variables de Neon dans ton `.env` (Vercel > Storage > ta base > `.env.local`).
 
 ### La clé API Claude
 
@@ -68,7 +79,7 @@ Sans clé, l'appli reste utilisable : tableau de bord, révisions, répétition 
 | `npm run build` / `npm start` | Build et serveur de production |
 | `npm run typecheck` | Vérification TypeScript |
 | `npm test` | Tests de la logique (répétition espacée, notation, dates) |
-| `npm run db:setup` | Crée ou met à jour la base |
+| `npm run db:push` | Crée ou met à jour les tables |
 | `npm run db:studio` | Explore les données dans le navigateur |
 
 ## Structure
@@ -109,7 +120,7 @@ tests/                   Tests unitaires (node:test)
 
 ## Feuille de route
 
-- [ ] Comptes utilisateurs (Auth.js) et base PostgreSQL pour un déploiement en ligne
+- [ ] Comptes utilisateurs (Auth.js) pour plusieurs personnes
 - [ ] Voix IA naturelles (synthèse vocale serveur) en complément des voix du navigateur
 - [ ] Test de placement pour fixer le niveau automatiquement
 - [ ] Statistiques d'erreurs récurrentes et leçons de grammaire ciblées

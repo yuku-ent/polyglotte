@@ -1,13 +1,15 @@
 // Schéma de données de Polyglotte.
-// Après une modification : npx prisma migrate dev --name <nom>
+// Après une modification : npm run db:push
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// PostgreSQL : Neon (via Vercel > Storage), Supabase ou un Postgres local.
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 /// Un seul profil local pour l'instant (appli personnelle).

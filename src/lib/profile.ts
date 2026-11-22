@@ -40,7 +40,7 @@ export async function getLanguage(lang: Lang) {
         example: item.example ?? null,
         source: "deck",
       }));
-    if (toCreate.length) await prisma.card.createMany({ data: toCreate });
+    if (toCreate.length) await prisma.card.createMany({ data: toCreate, skipDuplicates: true });
     return prisma.languageProgress.update({
       where: { id: progress.id },
       data: { deckSeeded: true },

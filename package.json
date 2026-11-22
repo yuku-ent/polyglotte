@@ -5,11 +5,11 @@
   "description": "Apprendre l'anglais, l'espagnol et l'arabe : répétition espacée, histoires audio, tuteur IA à l'oral et correction de l'écrit.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && prisma db push --skip-generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "db:setup": "prisma migrate dev --name init",
+    "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
