@@ -46,6 +46,12 @@ export function errorResponse(error: unknown) {
       { status: 502 },
     );
   }
+  if (status === 502 || status === 503) {
+    return NextResponse.json(
+      { error: "L'IA est momentanément surchargée. Réessaie dans quelques secondes.", code: "ai_busy" },
+      { status: 503 },
+    );
+  }
   if (status === 429) {
     return NextResponse.json(
       { error: "Limite de l'IA atteinte (l'offre gratuite limite les demandes par minute et par jour). Patiente un peu.", code: "rate_limited" },

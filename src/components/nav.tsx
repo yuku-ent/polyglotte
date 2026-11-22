@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LANGS, LANGUAGES } from "@/lib/languages";
 import { useProfile } from "./providers";
 import { cx } from "./ui";
+import { Logo } from "./logo";
 
 const LINKS = [
   { href: "/", label: "Accueil" },
@@ -27,9 +28,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-stone-900">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--accent)] text-sm text-white">P</span>
-          Polyglotte
+        <Link href="/" aria-label="Polyglotte, accueil">
+          <Logo />
         </Link>
 
         <div className="flex rounded-xl bg-stone-100 p-1" role="radiogroup" aria-label="Langue étudiée">

@@ -5,6 +5,7 @@ import type { DashboardData } from "@/lib/dashboard";
 import { api, errorMessage } from "@/lib/api-client";
 import { LANGUAGES, getVariety, isLang, type Lang, type Level } from "@/lib/languages";
 import { useVoicePlayer } from "@/hooks/useVoice";
+import { Splash } from "./splash";
 
 /* -------------------------------------------------------------------------- */
 /* Profil, langue en cours, temps d'étude et notifications                    */
@@ -200,6 +201,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     <ProfileContext.Provider value={value}>
       <div data-lang={lang} className="min-h-dvh">
         {children}
+        {!data && !error && <Splash />}
       </div>
       <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex flex-col items-center gap-2">
         {toasts.map((t) => (

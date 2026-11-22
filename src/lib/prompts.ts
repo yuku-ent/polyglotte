@@ -167,7 +167,7 @@ export const zStory = z.object({
       z.object({
         question: z.string(),
         options: z.array(z.string()).min(2).max(6),
-        answer: z.number().int().min(0),
+        answer: z.coerce.number().int().min(0),
         explanation: z.string().default(""),
       }),
     )
@@ -357,6 +357,17 @@ export const lessonSchema: Schema = {
 
 const zText = z.object({ text: z.string().min(1), translation: z.string().default(""), translit: z.string().default("") });
 
+const zExercise = z.object({
+  type: z.enum(EXERCISE_TYPES),
+  prompt: z.string().default(""),
+  text: z.string().default(""),
+  translit: z.string().default(""),
+  translation: z.string().default(""),
+  options: z.array(z.coerce.string()).default([]),
+  answer: z.coerce.number().int().min(0).default(0),
+  explanation: z.string().default(""),
+});
+
 export const zLesson = z.object({
   intro: z.string().default(""),
   words: z
@@ -385,25 +396,24 @@ export const zLesson = z.object({
       }),
     )
     .default([]),
-  exercises: z.array(
-    z.object({
-      type: z.enum(EXERCISE_TYPES),
-      prompt: z.string().default(""),
-      text: z.string().default(""),
-      translit: z.string().default(""),
-      translation: z.string().default(""),
-      options: z.array(z.string()).default([]),
-      answer: z.number().int().min(0).default(0),
-      explanation: z.string().default(""),
-    }),
-  ),
+  // Un exercice mal formé est ignoré au lieu de faire échouer toute la leçon.
+  exercises: z
+    .array(z.unknown())
+    .transform((items) =>
+      items.flatMap((item) => {
+        const parsed = zExercise.safeParse(item);
+        return parsed.success ? [parsed.data] : [];
+      }),
+    ),
 });
 export type LessonContent = z.infer<typeof zLesson>;
-export type Exercise = LessonContent["exercises"][number];
+export type Exercise = z.infer<typeof zExercise>;
 
 /** Retire les exercices incohérents (mauvais index, trou manquant…). */
 export function cleanExercises(exercises: Exercise[]): Exercise[] {
-  return exercises.filter((ex) => {
+  return exercises
+    .map((ex) => ({ ...ex, text: ex.type === "fill" ? ex.text.replace(/_{2,}|…{1,}|\.{3,}/, "___") : ex.text }))
+    .filter((ex) => {
     switch (ex.type) {
       case "choice":
       case "listen":

@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "./db";
 import { PROFILE_ID, getLanguage } from "./profile";
-import { generateStructured } from "./ai";
+import { AiResponseError, generateStructured } from "./ai";
 import { LESSON_VERSION, cleanExercises, lessonPrompt, lessonSchema, zLesson, type LessonContent } from "./prompts";
 import { CURRICULUM, allLessons, findLesson, nextLessonId, unitsBelowLevel } from "@/content/curriculum";
 import type { Lang, Level } from "./languages";
@@ -106,17 +106,30 @@ export async function lessonContent(lessonId: string): Promise<LessonContent> {
     { ...lesson },
     previousTitles,
   );
-  const content = await generateStructured({
-    system,
-    prompt,
-    toolName: "creer_lecon",
-    toolDescription: "Enregistre le contenu complet de la leçon.",
-    jsonSchema: lessonSchema,
-    validator: zLesson,
-    maxTokens: 8000,
-  });
-  content.exercises = cleanExercises(content.exercises);
-  if (content.exercises.length < 4) throw new Error("Leçon incomplète");
+  const generate = async () => {
+    const result = await generateStructured({
+      system,
+      prompt,
+      toolName: "creer_lecon",
+      toolDescription: "Enregistre le contenu complet de la leçon.",
+      jsonSchema: lessonSchema,
+      validator: zLesson,
+      maxTokens: 8000,
+    });
+    result.exercises = cleanExercises(result.exercises);
+    if (result.exercises.length < 4) throw new AiResponseError("La leçon générée était incomplète. Réessaie.");
+    return result;
+  };
+
+  let content: LessonContent;
+  try {
+    content = await generate();
+  } catch (error) {
+    // Une réponse ratée ou une surcharge passagère : on retente une fois.
+    const status = (error as { status?: number }).status;
+    if (!(error instanceof AiResponseError) && status !== 502 && status !== 503) throw error;
+    content = await generate();
+  }
 
   await prisma.lessonContent.upsert({
     where: { id: cacheId },

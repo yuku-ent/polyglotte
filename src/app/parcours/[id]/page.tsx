@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useProfile, useTTS } from "@/components/providers";
 import { LangText, MicButton, SpeakButton } from "@/components/speech";
 import { Button, ErrorBox, Panel, Spinner, cx } from "@/components/ui";
+import { Splash } from "@/components/splash";
 import { api, errorMessage } from "@/lib/api-client";
 import { normalize, scorePronunciation, type PronunciationScore } from "@/lib/scoring";
 import { isImprovement, type Lang } from "@/lib/languages";
@@ -123,11 +124,10 @@ export default function LessonPage() {
 
   if (!data) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-20 text-center">
-        <Spinner />
-        <p className="font-semibold">{LOADING_TIPS[tip]}</p>
-        <p className="text-sm text-stone-500">La première ouverture d&apos;une leçon peut prendre jusqu&apos;à une minute. Ensuite, elle s&apos;ouvre instantanément.</p>
-      </div>
+      <Splash
+        fullScreen={false}
+        message={`${LOADING_TIPS[tip]} La première ouverture d'une leçon peut prendre jusqu'à une minute, ensuite elle s'ouvre instantanément.`}
+      />
     );
   }
 
