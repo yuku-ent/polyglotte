@@ -195,7 +195,7 @@ export default function ShadowingPage() {
               {loading ? <Spinner label="Création…" /> : "Générer 8 phrases"}
             </Button>
             {data?.aiConfigured === false && (
-              <p className="mt-2 text-xs text-stone-500">Nécessite la clé API Claude.</p>
+              <p className="mt-2 text-xs text-stone-500">Nécessite une clé IA (GEMINI_API_KEY, gratuite).</p>
             )}
             {error && (
               <div className="mt-3">

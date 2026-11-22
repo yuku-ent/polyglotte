@@ -97,8 +97,8 @@ export function AiNotice() {
   if (!data || data.aiConfigured) return null;
   return (
     <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      <strong>Tuteur IA non configuré.</strong> Ajoute ta clé dans <code className="rounded bg-amber-100 px-1">ANTHROPIC_API_KEY</code> du
-      fichier <code className="rounded bg-amber-100 px-1">.env</code>, puis relance <code className="rounded bg-amber-100 px-1">npm run dev</code>.
+      <strong>Tuteur IA non configuré.</strong> Ajoute <code className="rounded bg-amber-100 px-1">GEMINI_API_KEY</code>{" "}
+      (gratuite sur aistudio.google.com) dans les variables d&apos;environnement, puis redéploie.{" "}
       En attendant, les <Link href="/revisions" className="underline">révisions</Link>, la{" "}
       <Link href="/repeter" className="underline">répétition</Link> et l&apos;
       <Link href="/alphabet" className="underline">alphabet</Link> fonctionnent sans IA.

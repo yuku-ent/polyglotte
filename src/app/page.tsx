@@ -246,8 +246,8 @@ export default function Dashboard() {
       {!data.aiConfigured && (
         <div className="lg:col-span-3">
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Le tuteur IA n&apos;est pas encore configuré. Ajoute ta clé <code>ANTHROPIC_API_KEY</code> dans{" "}
-            <code>.env</code> pour débloquer les histoires, la conversation et la correction de l&apos;écrit.
+            Le tuteur IA n&apos;est pas encore configuré. Ajoute une clé <code>GEMINI_API_KEY</code> (gratuite sur
+            aistudio.google.com) pour débloquer les histoires, la conversation et la correction de l&apos;écrit.
           </div>
         </div>
       )}

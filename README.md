@@ -31,7 +31,7 @@ L'arabe a droit à un traitement à part : alphabet interactif, translittératio
 - [Next.js 15](https://nextjs.org) (App Router) + React 19 + TypeScript strict
 - [Tailwind CSS 4](https://tailwindcss.com)
 - [Prisma](https://www.prisma.io) + PostgreSQL (Neon gratuit via Vercel, ou Supabase)
-- [API Claude](https://docs.claude.com) (`@anthropic-ai/sdk`) avec sorties structurées validées par [Zod](https://zod.dev)
+- IA : [Gemini](https://ai.google.dev) (offre gratuite) ou [Claude](https://docs.claude.com), sorties JSON validées par [Zod](https://zod.dev)
 - Web Speech API du navigateur pour la voix (synthèse et reconnaissance)
 
 ## Installation
@@ -42,7 +42,7 @@ Prérequis : Node.js 20 ou plus récent, et une base PostgreSQL (Neon gratuit, v
 git clone https://github.com/yuku-ent/polyglotte.git
 cd polyglotte
 npm install
-cp .env.example .env        # remplis DATABASE_URL, DATABASE_URL_UNPOOLED et ANTHROPIC_API_KEY
+cp .env.example .env        # remplis DATABASE_URL, DATABASE_URL_UNPOOLED et GEMINI_API_KEY
 npm run db:push             # crée les tables
 npm run dev
 ```
@@ -53,16 +53,19 @@ Ouvre ensuite <http://localhost:3000>.
 
 1. Importe le dépôt GitHub dans Vercel.
 2. Dans le projet Vercel : **Storage > Create Database > Neon** (gratuit), puis connecte-la au projet. Vercel ajoute `DATABASE_URL` et `DATABASE_URL_UNPOOLED` tout seul.
-3. **Settings > Environment Variables** : ajoute `ANTHROPIC_API_KEY` et `APP_PASSWORD`.
+3. **Settings > Environment Variables** : ajoute `GEMINI_API_KEY` (ou `ANTHROPIC_API_KEY`) et `APP_PASSWORD`.
 4. **Deployments > Redeploy**. Le build crée les tables automatiquement (`prisma db push`).
 
 `APP_PASSWORD` protège l'appli : sans lui, toute personne qui a le lien utilise ton profil et ta clé API.
 
 Pour travailler en local avec la même base, copie les deux variables de Neon dans ton `.env` (Vercel > Storage > ta base > `.env.local`).
 
-### La clé API Claude
+### La clé IA
 
-Les histoires, la conversation, la correction de l'écrit et la génération de phrases utilisent l'API Claude. Crée une clé sur <https://console.anthropic.com> et colle-la dans `.env`. L'API est payante à l'usage (quelques centimes par session en général).
+Les histoires, la conversation, la correction de l'écrit et la génération de phrases utilisent un modèle d'IA. Deux choix :
+
+- **Gemini (gratuit)** : crée une clé sur <https://aistudio.google.com> (« Get API key »), sans carte bancaire, et mets-la dans `GEMINI_API_KEY`. L'offre gratuite limite le nombre de demandes par minute et par jour, et Google peut utiliser les échanges pour améliorer ses produits.
+- **Claude (payant à l'usage)** : clé sur <https://console.anthropic.com> dans `ANTHROPIC_API_KEY`. Si elle est remplie, elle est utilisée en priorité.
 
 Sans clé, l'appli reste utilisable : tableau de bord, révisions, répétition et alphabet fonctionnent hors IA.
 
@@ -105,7 +108,7 @@ src/
     srs.ts               Algorithme SM-2 (fonctions pures)
     scoring.ts           Comparaison phrase attendue / phrase entendue
     prompts.ts           Consignes et schémas JSON envoyés à Claude
-    ai.ts                Appel à Claude avec sortie structurée
+    ai.ts                Appel à l'IA (Claude ou Gemini) avec sortie structurée
     activity.ts          XP, série et activité du jour
     languages.ts         Langues, variantes, niveaux
 tests/                   Tests unitaires (node:test)
@@ -114,7 +117,7 @@ tests/                   Tests unitaires (node:test)
 ### Comment ça marche
 
 - **Répétition espacée** : chaque carte a une facilité, un intervalle et un nombre de répétitions. « Bien » multiplie l'intervalle par la facilité, « À revoir » remet la carte à zéro et la ramène 10 minutes plus tard. 15 nouvelles cartes maximum par jour et par langue.
-- **IA fiable** : chaque appel à Claude force l'usage d'un outil avec un schéma JSON ; la réponse est validée par Zod avant d'être enregistrée. Une réponse invalide renvoie une erreur propre plutôt qu'un écran cassé.
+- **IA fiable** : chaque appel demande un JSON conforme à un schéma (outil forcé avec Claude, mode JSON avec Gemini) ; la réponse est validée par Zod avant d'être enregistrée. Une réponse invalide renvoie une erreur propre plutôt qu'un écran cassé.
 - **XP calculée côté serveur** : le navigateur envoie un résultat (une note, un nombre de bonnes réponses), jamais un montant d'XP.
 - **Profil local** : l'appli est personnelle et utilise un profil unique. L'authentification est prévue dans la feuille de route.
 

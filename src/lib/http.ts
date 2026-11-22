@@ -42,13 +42,13 @@ export function errorResponse(error: unknown) {
   const status = (error as { status?: number })?.status;
   if (status === 401) {
     return NextResponse.json(
-      { error: "Clé API Claude refusée : vérifie ANTHROPIC_API_KEY.", code: "ai_auth" },
+      { error: "Clé API refusée : vérifie GEMINI_API_KEY ou ANTHROPIC_API_KEY (et GEMINI_MODEL si tu l'as changé).", code: "ai_auth" },
       { status: 502 },
     );
   }
   if (status === 429) {
     return NextResponse.json(
-      { error: "Trop de demandes à l'IA. Patiente quelques secondes.", code: "rate_limited" },
+      { error: "Limite de l'IA atteinte (l'offre gratuite limite les demandes par minute et par jour). Patiente un peu.", code: "rate_limited" },
       { status: 429 },
     );
   }
