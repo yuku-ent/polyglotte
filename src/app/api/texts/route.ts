@@ -19,13 +19,14 @@ const schema = z.object({
   lang: z.enum(LANGS),
   purpose: z.enum(TEXT_PURPOSES),
   topic: z.string().trim().min(2).max(120),
-  length: z.enum(Object.keys(TEXT_LENGTHS) as [TextLength, ...TextLength[]]).default("court"),
+  length: z.enum(Object.keys(TEXT_LENGTHS) as [TextLength, ...TextLength[]]).default("moyen"),
+  avoid: z.array(z.string().max(120)).max(20).default([]),
 });
 
 /** Génère un court texte suivi pour la dictée, le shadowing ou la traduction. */
 export async function POST(req: Request) {
   try {
-    const { lang, purpose, topic, length } = await parseBody(req, schema);
+    const { lang, purpose, topic, length, avoid } = await parseBody(req, schema);
     // Traduction en français (perfectionnement) : on traduit depuis l'anglais.
     const sourceLang = lang === "fr" && purpose === "translation" ? "en" : lang;
     const language = await getLanguage(sourceLang);
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
       purpose,
       topic,
       length,
+      avoid,
     );
     const text = await generateStructured({
       system,
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
       toolDescription: "Enregistre le texte d'entraînement, phrase par phrase.",
       jsonSchema: practiceTextSchema,
       validator: zPracticeText,
-      maxTokens: 2500,
+      maxTokens: length === "long" ? 5000 : 3500,
     });
     return json({ text, sourceLang });
   } catch (error) {

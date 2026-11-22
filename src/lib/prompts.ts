@@ -471,7 +471,21 @@ export function lessonPrompt(
 export const TEXT_PURPOSES = ["dictation", "shadowing", "translation"] as const;
 export type TextPurpose = (typeof TEXT_PURPOSES)[number];
 
-export const TEXT_LENGTHS = { court: "4 à 5 phrases", moyen: "6 à 8 phrases", long: "10 à 12 phrases" } as const;
+export const TEXT_LENGTHS = { court: "6 à 8 phrases", moyen: "10 à 12 phrases", long: "15 à 18 phrases" } as const;
+
+/** Genres tirés au hasard pour que deux textes ne se ressemblent pas. */
+export const TEXT_GENRES = [
+  "un récit à la première personne avec un petit rebondissement",
+  "une lettre ou un e-mail adressé à quelqu'un",
+  "un court article de presse",
+  "un dialogue entre deux personnes, écrit comme un récit",
+  "un témoignage de quelqu'un qui raconte son expérience",
+  "une page de journal intime",
+  "un texte de conseils pratiques",
+  "la description vivante d'un lieu",
+  "un fait divers amusant",
+  "un portrait d'une personne inspirante (inventée)",
+];
 export type TextLength = keyof typeof TEXT_LENGTHS;
 
 export const practiceTextSchema: Schema = {
@@ -507,13 +521,27 @@ const PURPOSE_RULES: Record<TextPurpose, string> = {
     "Le texte sert à un exercice de TRADUCTION : phrases claires et naturelles, chacune avec une traduction française fidèle et naturelle. Une phrase par élément.",
 };
 
-export function practiceTextPrompt(ctx: LearnerContext, purpose: TextPurpose, topic: string, length: TextLength) {
+export function practiceTextPrompt(
+  ctx: LearnerContext,
+  purpose: TextPurpose,
+  topic: string,
+  length: TextLength,
+  avoid: string[] = [],
+) {
+  const genre = TEXT_GENRES[Math.floor(Math.random() * TEXT_GENRES.length)];
   const system = [
-    "Tu écris de courts textes suivis (pas des phrases isolées) pour s'entraîner dans une langue.",
+    "Tu écris des textes suivis (pas des phrases isolées) pour s'entraîner dans une langue. Chaque texte doit être original : nouveaux personnages, nouvelle situation, vocabulaire varié.",
     describeLearner(ctx),
     PURPOSE_RULES[purpose],
   ].join("\n");
-  const prompt = `Thème : « ${topic} ». Longueur : ${TEXT_LENGTHS[length]}.`;
+  const prompt = [
+    `Thème : « ${topic} ».`,
+    `Forme : ${genre}.`,
+    `Longueur : ${TEXT_LENGTHS[length]}.`,
+    avoid.length ? `Ne refais pas un texte proche de ceux-ci (titres déjà faits) : ${avoid.slice(-10).join(" ; ")}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
   return { system, prompt };
 }
 

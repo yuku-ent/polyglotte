@@ -5,16 +5,16 @@ import { useProfile } from "./providers";
 import { Button, ErrorBox, Panel, Spinner, cx } from "./ui";
 import { api, errorMessage } from "@/lib/api-client";
 import { STORY_TOPICS } from "@/content/scenarios";
-import { STARTER_PHRASES } from "@/content/phrases";
+import { pickBankText, recentAiTitles, rememberAiTitle } from "@/content/texts";
 import type { Lang } from "@/lib/languages";
 
 export type PracticeSentence = { text: string; translation: string; translit: string };
 export type PracticeTextData = { title: string; sentences: PracticeSentence[]; sourceLang: Lang };
 
 const LENGTHS = [
-  { id: "court", label: "Court" },
-  { id: "moyen", label: "Moyen" },
-  { id: "long", label: "Long" },
+  { id: "court", label: "Court · 6-8 phrases" },
+  { id: "moyen", label: "Moyen · 10-12" },
+  { id: "long", label: "Long · 15-18" },
 ] as const;
 
 /**
@@ -35,7 +35,7 @@ export function PracticeTextPicker({
   const { lang, data } = useProfile();
   const [topic, setTopic] = useState(STORY_TOPICS[0]);
   const [custom, setCustom] = useState("");
-  const [length, setLength] = useState<(typeof LENGTHS)[number]["id"]>("court");
+  const [length, setLength] = useState<(typeof LENGTHS)[number]["id"]>("moyen");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const aiReady = data?.aiConfigured !== false;
@@ -46,8 +46,9 @@ export function PracticeTextPicker({
     try {
       const res = await api<{ text: { title: string; sentences: PracticeSentence[] }; sourceLang: Lang }>("/api/texts", {
         method: "POST",
-        body: { lang, purpose, topic: custom.trim() || topic, length },
+        body: { lang, purpose, topic: custom.trim() || topic, length, avoid: recentAiTitles() },
       });
+      if (res.text.title) rememberAiTitle(res.text.title);
       onReady({ ...res.text, sourceLang: res.sourceLang });
     } catch (e) {
       setError(errorMessage(e));
@@ -56,12 +57,14 @@ export function PracticeTextPicker({
     }
   }
 
-  function useStarter() {
+  function useBank() {
     const source: Lang = lang === "fr" && purpose === "translation" ? "en" : lang;
+    const pool = purpose === "dictation" ? "dictation" : purpose === "shadowing" ? "copy" : Math.random() < 0.5 ? "dictation" : "copy";
+    const text = pickBankText(source, pool);
     onReady({
-      title: "Phrases de départ",
+      title: text.title,
       sourceLang: source,
-      sentences: STARTER_PHRASES[source].map((p) => ({ text: p.text, translation: p.translation, translit: p.translit ?? "" })),
+      sentences: text.sentences.map((p) => ({ text: p.text, translation: p.translation, translit: p.translit ?? "" })),
     });
   }
 
@@ -116,11 +119,11 @@ export function PracticeTextPicker({
         <Button onClick={() => void generate()} disabled={loading || !aiReady}>
           {loading ? <Spinner label="Écriture du texte…" /> : "Créer un texte"}
         </Button>
-        <Button variant="secondary" onClick={useStarter} disabled={loading}>
-          Phrases de départ (sans attendre)
+        <Button variant="secondary" onClick={useBank} disabled={loading}>
+          Texte prêt (sans attendre)
         </Button>
       </div>
-      {!aiReady && <p className="mt-2 text-xs text-stone-500">Les textes sur mesure demandent la clé IA. Les phrases de départ marchent sans.</p>}
+      {!aiReady && <p className="mt-2 text-xs text-stone-500">Les textes sur mesure demandent la clé IA. Les textes prêts marchent sans.</p>}
       {error && (
         <div className="mt-4">
           <ErrorBox message={error} />
