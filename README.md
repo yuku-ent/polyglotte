@@ -74,12 +74,13 @@ Pour travailler en local avec la même base, copie les deux variables de Neon da
 
 ### La clé IA
 
-Les histoires, la conversation, la correction de l'écrit et la génération de phrases utilisent un modèle d'IA. Deux choix :
+Les leçons, histoires, conversation, correction et traduction utilisent un modèle d'IA. Une clé suffit ; en mettre plusieurs rend l'appli plus fiable (si l'une est saturée, l'autre prend le relais) :
 
-- **Gemini (gratuit)** : crée une clé sur <https://aistudio.google.com> (« Get API key »), sans carte bancaire, et mets-la dans `GEMINI_API_KEY`. L'offre gratuite limite le nombre de demandes par minute et par jour, et Google peut utiliser les échanges pour améliorer ses produits.
-- **Claude (payant à l'usage)** : clé sur <https://console.anthropic.com> dans `ANTHROPIC_API_KEY`. Si elle est remplie, elle est utilisée en priorité.
+- **Groq (gratuit, très rapide, recommandé)** : clé sur <https://console.groq.com/keys>, sans carte bancaire, dans `GROQ_API_KEY`. Sert aussi à transcrire le micro.
+- **Gemini (gratuit)** : clé sur <https://aistudio.google.com>, dans `GEMINI_API_KEY`. Sert aussi à la voix naturelle. Aux heures de pointe, l'offre gratuite est souvent saturée : l'appli essaie alors `gemini-flash-lite-latest` puis `gemma-3-27b-it`.
+- **Claude (payant à l'usage)** : clé sur <https://console.anthropic.com>, dans `ANTHROPIC_API_KEY`. Utilisée en priorité si elle est remplie.
 
-Sans clé, l'appli reste utilisable : tableau de bord, révisions, répétition et alphabet fonctionnent hors IA.
+Sans clé, l'appli reste utilisable : révisions, dictée et recopie (phrases de départ), répétition et alphabet.
 
 ### Le micro et la voix
 

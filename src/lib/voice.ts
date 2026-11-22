@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "./db";
-import { AiResponseError, geminiRequest, geminiWithFallback } from "./ai";
+import { AiResponseError, GEMINI_FALLBACK_MODELS, GEMINI_MODEL, geminiRequest, geminiWithFallback } from "./ai";
 import { LANGUAGES, type Lang } from "./languages";
 
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-preview";
@@ -56,9 +56,37 @@ export async function synthesize(text: string, lang: Lang): Promise<Buffer> {
   return wav;
 }
 
-/** Transcription d'un enregistrement du micro (WAV en base64) par Gemini. */
+/** Transcription par Groq (Whisper) : gratuite et quasi instantanée. */
+async function transcribeWithGroq(audioBase64: string, lang: Lang): Promise<string> {
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(Buffer.from(audioBase64, "base64"))], { type: "audio/wav" }), "audio.wav");
+  form.append("model", process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo");
+  form.append("language", lang);
+  form.append("temperature", "0");
+  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+    body: form,
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw new Error(`Groq transcription ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = (await res.json()) as { text?: string };
+  return (data.text ?? "").trim();
+}
+
+/** Transcription d'un enregistrement du micro (WAV en base64) : Groq si disponible, sinon Gemini. */
 export async function transcribe(audioBase64: string, lang: Lang): Promise<string> {
+  if (process.env.GROQ_API_KEY) {
+    try {
+      return await transcribeWithGroq(audioBase64, lang);
+    } catch (error) {
+      if (!process.env.GEMINI_API_KEY) throw error;
+      console.warn("[stt] Groq indisponible, bascule sur Gemini", error);
+    }
+  }
   const name = LANGUAGES[lang].nativeName;
+  // Gemma ne comprend pas l'audio : on ne garde que les modèles Gemini.
+  const audioModels = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS].filter((m) => !m.startsWith("gemma"));
   const data = await geminiWithFallback({
     contents: [
       {
@@ -76,7 +104,7 @@ export async function transcribe(audioBase64: string, lang: Lang): Promise<strin
       },
     ],
     generationConfig: { temperature: 0 },
-  });
+  }, 40_000, audioModels);
   const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   return text.trim().replace(/^["«»“”]+|["«»“”]+$/g, "").trim();
 }

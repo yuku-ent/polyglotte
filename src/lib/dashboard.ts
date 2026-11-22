@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import { PROFILE_ID, getLanguage, getProfile } from "./profile";
 import { isLang } from "./languages";
 import { dayKey, displayedStreak, lastNDays } from "./dates";
-import { aiConfigured, geminiConfigured } from "./ai";
+import { aiConfigured, geminiConfigured, groqConfigured } from "./ai";
 import { courseOverview } from "./course";
 
 export async function dashboard(langParam?: string | null) {
@@ -50,7 +50,7 @@ export async function dashboard(langParam?: string | null) {
     stats: { total, due, newCount, inProgress, mastered },
     course: { next: course.next, done: course.done, total: course.total },
     aiConfigured: aiConfigured(),
-    voice: { natural: geminiConfigured() },
+    voice: { natural: geminiConfigured(), stt: geminiConfigured() || groqConfigured() },
   };
 }
 

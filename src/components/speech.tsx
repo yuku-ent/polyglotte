@@ -74,7 +74,7 @@ export function SpeakButton({
  */
 export function MicButton(props: { onText: (text: string) => void; disabled?: boolean; size?: "md" | "lg" }) {
   const { data } = useProfile();
-  return data?.voice.natural ? <RecorderMic {...props} /> : <BrowserMic {...props} />;
+  return data?.voice.stt ? <RecorderMic {...props} /> : <BrowserMic {...props} />;
 }
 
 function micClasses(size: "md" | "lg", active: boolean) {
