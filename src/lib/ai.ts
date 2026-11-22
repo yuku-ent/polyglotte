@@ -94,16 +94,23 @@ export function geminiConfigured(): boolean {
 /** Appel brut à l'API Gemini, avec des erreurs converties en statuts lisibles. */
 export async function geminiRequest(model: string, body: unknown): Promise<GeminiResponse> {
   if (!process.env.GEMINI_API_KEY) throw new AiUnavailableError();
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    console.error("[ai] Gemini injoignable", e);
+    throw new ProviderHttpError(502, "Gemini injoignable");
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error("[ai] Gemini", model, res.status, detail.slice(0, 500));
     // 400/403 : clé invalide ou modèle inconnu → traité comme un problème de clé.
-    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 502 : 401, "Gemini");
+    const reason = /"message":\s*"([^"]+)"/.exec(detail)?.[1] ?? `HTTP ${res.status}`;
+    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 502 : 401, `Gemini (${model}) : ${reason}`);
   }
   return (await res.json()) as GeminiResponse;
 }
@@ -137,15 +144,28 @@ async function callGemini(req: StructuredRequest<unknown>): Promise<unknown> {
  */
 export async function generateStructured<T>(req: StructuredRequest<T>): Promise<T> {
   const provider = getProvider();
-  const raw =
-    provider === "anthropic"
-      ? await callAnthropic(req as StructuredRequest<unknown>)
-      : await callGemini(req as StructuredRequest<unknown>);
+  const attempt = async () => {
+    const raw =
+      provider === "anthropic"
+        ? await callAnthropic(req as StructuredRequest<unknown>)
+        : await callGemini(req as StructuredRequest<unknown>);
+    const parsed = req.validator.safeParse(raw);
+    if (!parsed.success) {
+      console.error("[ai] réponse invalide", JSON.stringify(parsed.error.flatten()).slice(0, 1000));
+      throw new AiResponseError();
+    }
+    return parsed.data;
+  };
 
-  const parsed = req.validator.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[ai] réponse invalide", parsed.error.flatten());
-    throw new AiResponseError();
+  try {
+    return await attempt();
+  } catch (error) {
+    // Réponse inutilisable ou surcharge passagère : un second essai suffit le plus souvent.
+    const status = (error as { status?: number }).status;
+    if (error instanceof AiResponseError || status === 502 || status === 503) {
+      console.warn("[ai] nouvel essai après", error);
+      return attempt();
+    }
+    throw error;
   }
-  return parsed.data;
 }

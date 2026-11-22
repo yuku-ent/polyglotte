@@ -42,13 +42,19 @@ export function errorResponse(error: unknown) {
   const status = (error as { status?: number })?.status;
   if (status === 401) {
     return NextResponse.json(
-      { error: "Clé API refusée : vérifie GEMINI_API_KEY ou ANTHROPIC_API_KEY (et GEMINI_MODEL si tu l'as changé).", code: "ai_auth" },
+      {
+        error: `L'IA a refusé la demande : vérifie GEMINI_API_KEY et GEMINI_MODEL. Détail : ${(error as Error).message ?? ""}`.slice(0, 400),
+        code: "ai_auth",
+      },
       { status: 502 },
     );
   }
   if (status === 502 || status === 503) {
     return NextResponse.json(
-      { error: "L'IA est momentanément surchargée. Réessaie dans quelques secondes.", code: "ai_busy" },
+      {
+        error: `L'IA est momentanément indisponible. Réessaie dans quelques secondes. (${(error as Error).message ?? ""})`.slice(0, 400),
+        code: "ai_busy",
+      },
       { status: 503 },
     );
   }
@@ -59,7 +65,12 @@ export function errorResponse(error: unknown) {
     );
   }
   console.error(error);
-  return NextResponse.json({ error: "Erreur inattendue du serveur.", code: "server" }, { status: 500 });
+  // Le détail aide à diagnostiquer (appli personnelle protégée par mot de passe).
+  const detail = error instanceof Error ? `${error.name} : ${error.message}`.slice(0, 300) : String(error).slice(0, 300);
+  return NextResponse.json(
+    { error: `Erreur inattendue du serveur (${detail})`, code: "server" },
+    { status: 500 },
+  );
 }
 
 export async function parseBody<S extends z.ZodTypeAny>(req: Request, schema: S): Promise<z.infer<S>> {
