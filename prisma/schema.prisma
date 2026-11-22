@@ -16,8 +16,10 @@ datasource db {
 model Profile {
   id            String   @id
   name          String?
-  currentLang   String   @default("en") // en | es | ar
-  dailyGoal     Int      @default(50) // objectif d'XP par jour
+  currentLang   String   @default("en") // en | es | ar | fr
+  dailyGoal     Int      @default(50) // obsolète (remplacé par minMinutes), gardé pour ne pas perdre de données
+  minMinutes    Int      @default(15) // temps d'étude minimum par jour (jamais de maximum)
+  onboarded     Boolean  @default(false)
   xp            Int      @default(0)
   streak        Int      @default(0)
   bestStreak    Int      @default(0)
@@ -31,6 +33,7 @@ model Profile {
   journal       JournalEntry[]
   stories       Story[]
   conversations Conversation[]
+  lessons       LessonProgress[]
 }
 
 /// Niveau et variante choisis pour chaque langue.
@@ -41,6 +44,7 @@ model LanguageProgress {
   level     String  @default("A1") // A1 | A2 | B1 | B2 | C1
   variety   String // ex. "us", "es", "msa", "darija"
   deckSeeded Boolean @default(false)
+  placed     Boolean @default(false) // niveau de départ choisi dans le parcours
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
@@ -95,6 +99,8 @@ model ActivityDay {
   shadowing  Int    @default(0)
   writings   Int    @default(0)
   alphabet   Int    @default(0)
+  lessons    Int    @default(0)
+  seconds    Int    @default(0) // temps d'étude actif
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
@@ -159,4 +165,34 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+/// Avancement dans le parcours : une ligne par leçon terminée ou passée.
+model LessonProgress {
+  id          String   @id @default(cuid())
+  profileId   String
+  lang        String
+  lessonId    String
+  status      String // "done" | "skipped"
+  bestScore   Int      @default(0)
+  attempts    Int      @default(0)
+  completedAt DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, lang, lessonId])
+}
+
+/// Contenu d'une leçon généré une fois par l'IA puis réutilisé.
+model LessonContent {
+  id        String   @id // "<lang>:<variety>:<lessonId>:v<version>"
+  content   String // JSON
+  createdAt DateTime @default(now())
+}
+
+/// Audio de synthèse vocale mis en cache (évite de consommer le quota deux fois).
+model TtsCache {
+  id        String   @id // empreinte SHA-256 du texte, de la langue et de la voix
+  audio     Bytes
+  createdAt DateTime @default(now())
 }

@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 const schema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("shadowing"), score: z.number().min(0).max(100) }),
   z.object({ kind: z.literal("alphabet"), correct: z.number().int().min(0).max(50) }),
+  // Temps d'étude actif, envoyé par petits morceaux (au plus 2 minutes par envoi).
+  z.object({ kind: z.literal("time"), seconds: z.number().int().min(1).max(120) }),
 ]);
 
 export async function POST(req: Request) {
@@ -20,6 +22,10 @@ export async function POST(req: Request) {
       const bonus = body.score >= 90 ? 5 : body.score >= 70 ? 3 : body.score >= 50 ? 1 : 0;
       const result = await recordActivity("shadowing", XP.shadowing + bonus);
       return json({ xp: result.gained });
+    }
+    if (body.kind === "time") {
+      await recordActivity("seconds", 0, body.seconds);
+      return json({ xp: 0 });
     }
     const result = await recordActivity("alphabet", body.correct * XP.alphabetCorrect);
     return json({ xp: result.gained });

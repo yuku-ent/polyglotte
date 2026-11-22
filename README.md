@@ -1,12 +1,17 @@
 # Polyglotte
 
-Application web pour apprendre **l'anglais, l'espagnol et l'arabe** en travaillant les quatre compétences au même endroit : vocabulaire, compréhension, oral et écrit.
+Application web pour apprendre **l'anglais, l'espagnol et l'arabe**, et se **perfectionner en français**, en travaillant les quatre compétences au même endroit : vocabulaire, compréhension, oral et écrit.
+
+Deux façons d'apprendre :
+
+- **Le parcours** : un vrai fil directeur, unité par unité, leçon par leçon, du tout premier mot jusqu'au niveau B1.
+- **L'arcade** : révisions, histoires, conversation, répétition et écriture, autant que tu veux. Tu fixes un **temps minimum par jour, jamais de maximum** : aucun quota ne te bloque.
 
 Elle reprend ce qui marche dans les grandes plateformes et corrige leurs points faibles :
 
 | Inspiré de | Ce qu'on garde | Ce qu'on corrige |
 | --- | --- | --- |
-| Duolingo | Série de jours, XP, objectif quotidien, missions | Du vrai contenu, de l'oral réel |
+| Duolingo | Parcours guidé, série de jours, XP | Pas de quotas ni de limites, du vrai contenu, de l'oral réel |
 | Anki | Répétition espacée (SM-2) | Paquets prêts, audio, ajout en un clic |
 | LingQ / Lingopie | Lecture et écoute en contexte | Histoires générées à **ton** niveau, sur **tes** sujets |
 | Pimsleur | Écouter et répéter | Note de prononciation mot par mot |
@@ -17,14 +22,17 @@ L'arabe a droit à un traitement à part : alphabet interactif, translittératio
 
 ## Fonctionnalités
 
-- **Aujourd'hui** : objectif d'XP, série, missions du jour, activité de la semaine, réglages de niveau (A1 à C1) et de variante.
-- **Réviser** : cartes en répétition espacée (algorithme SM-2), audio normal et lent, raccourcis clavier, sens langue → français ou l'inverse, gestion de ses mots.
-- **Lire & écouter** : histoires générées par l'IA à ton niveau, lecture audio phrase par phrase, traduction au clic, vocabulaire à ajouter aux révisions, quiz de compréhension.
-- **Parler** : jeux de rôle avec un tuteur IA (restaurant, visite d'appartement, négociation, pitch, entretien…), au micro ou au clavier. Chaque message est corrigé et expliqué, avec des idées de réponse.
-- **Répéter** : shadowing. Tu écoutes, tu répètes au micro, tu obtiens une note et les mots mal prononcés en rouge.
-- **Écrire** : journal corrigé. Note sur 100, texte corrigé, erreurs expliquées, version d'un natif, conseil.
-- **Alphabet** (arabe) : les 28 lettres, leurs 4 formes, leurs sons, les voyelles courtes et un quiz.
-- **La méthode** : l'analyse complète des plateformes existantes.
+- **Accueil** : premier lancement guidé (langue, niveau, temps minimum), puis « Continuer le parcours », temps d'étude du jour, entraînement libre et réglages.
+- **Parcours** : 5 à 6 unités par langue, 4 à 5 leçons chacune, et une révision en fin d'unité. Chaque leçon : objectif, mots nouveaux avec audio, une règle expliquée en français, un dialogue, puis 10 à 12 exercices variés (choix, écoute, remettre dans l'ordre, phrase à trou, parler au micro). Les erreurs reviennent à la fin, les mots rejoignent les révisions. Placement selon le niveau et bouton « Je connais déjà » pour passer une unité.
+- **Réviser** : répétition espacée (SM-2), sans limite de nouveaux mots.
+- **Lire & écouter** : histoires générées à ton niveau, audio phrase par phrase, traduction, quiz.
+- **Parler** : jeux de rôle avec un tuteur IA, au micro ou au clavier, chaque message corrigé et expliqué.
+- **Répéter** : shadowing avec note de prononciation mot par mot.
+- **Écrire** : journal corrigé, note, erreurs expliquées, version d'un natif.
+- **Alphabet** (arabe) : 28 lettres, 4 formes, sons, voyelles courtes, quiz.
+- **Français** : parcours de perfectionnement (orthographe, conjugaison, vocabulaire précis, écrit pro, oral).
+- **Voix** : voix naturelle générée par Gemini (mise en cache) et micro transcrit par Gemini ; voix et micro du navigateur en secours.
+- **Temps d'étude** : compté seulement quand tu es actif, affiché par rapport à ton minimum.
 
 ## Stack
 
@@ -32,7 +40,7 @@ L'arabe a droit à un traitement à part : alphabet interactif, translittératio
 - [Tailwind CSS 4](https://tailwindcss.com)
 - [Prisma](https://www.prisma.io) + PostgreSQL (Neon gratuit via Vercel, ou Supabase)
 - IA : [Gemini](https://ai.google.dev) (offre gratuite) ou [Claude](https://docs.claude.com), sorties JSON validées par [Zod](https://zod.dev)
-- Web Speech API du navigateur pour la voix (synthèse et reconnaissance)
+- Voix : synthèse et transcription Gemini, Web Speech API du navigateur en secours
 
 ## Installation
 
@@ -71,8 +79,11 @@ Sans clé, l'appli reste utilisable : tableau de bord, révisions, répétition 
 
 ### Le micro et la voix
 
-- **Chrome ou Edge** donnent les meilleurs résultats pour la reconnaissance vocale (l'arabe inclus).
-- La voix lue dépend des voix installées sur ton système. Pour l'arabe et l'espagnol, installe la voix correspondante si besoin (Windows : Paramètres > Heure et langue > Voix ; macOS : Réglages > Accessibilité > Contenu énoncé).
+Avec `GEMINI_API_KEY`, la voix est générée par Gemini (une seule fois par phrase, puis gardée en base) et le micro enregistre ta voix pour la faire transcrire par Gemini : ça marche dans tous les navigateurs récents et pour l'arabe. Autorise le micro quand le navigateur le demande.
+
+Sans clé, l'appli utilise la voix et la reconnaissance vocale du navigateur (Chrome ou Edge conseillés).
+
+Variables facultatives : `GEMINI_TTS_MODEL` (modèle de voix, par défaut `gemini-3.1-flash-tts-preview`) et `GEMINI_TTS_VOICE` (par défaut `Kore`). Si Google renomme ses modèles, copie le nouveau nom depuis AI Studio.
 
 ## Scripts
 
@@ -92,7 +103,9 @@ prisma/
   schema.prisma          Modèle de données (profil, cartes, journal, histoires, conversations…)
 src/
   app/
-    page.tsx             Tableau de bord « Aujourd'hui »
+    page.tsx             Accueil
+    bienvenue/           Premier lancement (langue, niveau, temps minimum)
+    parcours/            Le parcours et le lecteur de leçon (parcours/[id])
     revisions/           Répétition espacée
     lire/                Histoires à lire et écouter
     parler/              Conversation avec le tuteur
@@ -102,21 +115,27 @@ src/
     methode/             Analyse des plateformes
     api/                 Routes API (profile, cards, stories, conversation, writing, phrases, activity)
   components/            Interface (navigation, boutons audio et micro, composants communs, contextes)
-  content/               Contenus de départ : paquets de mots, phrases, alphabet, scénarios, analyse
-  hooks/useSpeech.ts     Reconnaissance et synthèse vocales
+  content/
+    curriculum.ts        Le plan du parcours (unités, leçons, objectifs, grammaire)
+    …                    Paquets de mots, phrases, alphabet, scénarios, analyse
+  hooks/                 Voix (useVoice), micro (useRecorder), Web Speech (useSpeech)
   lib/
     srs.ts               Algorithme SM-2 (fonctions pures)
     scoring.ts           Comparaison phrase attendue / phrase entendue
     prompts.ts           Consignes et schémas JSON envoyés à Claude
     ai.ts                Appel à l'IA (Claude ou Gemini) avec sortie structurée
-    activity.ts          XP, série et activité du jour
+    course.ts            Parcours : avancement, placement, génération des leçons
+    voice.ts             Voix Gemini (WAV) et transcription du micro
+    activity.ts          XP, série, temps d'étude
     languages.ts         Langues, variantes, niveaux
 tests/                   Tests unitaires (node:test)
 ```
 
 ### Comment ça marche
 
-- **Répétition espacée** : chaque carte a une facilité, un intervalle et un nombre de répétitions. « Bien » multiplie l'intervalle par la facilité, « À revoir » remet la carte à zéro et la ramène 10 minutes plus tard. 15 nouvelles cartes maximum par jour et par langue.
+- **Parcours** : le plan de chaque leçon est écrit dans `curriculum.ts` ; le contenu détaillé est généré par l'IA à la première ouverture, puis gardé en base et réutilisé.
+- **Répétition espacée** : chaque carte a une facilité, un intervalle et un nombre de répétitions. « Bien » multiplie l'intervalle par la facilité, « À revoir » remet la carte à zéro et la ramène 10 minutes plus tard. Les nouveaux mots arrivent par séries de 10, sans limite par jour.
+- **Temps d'étude** : compté seconde par seconde quand l'onglet est visible et que tu as interagi depuis moins de 90 secondes.
 - **IA fiable** : chaque appel demande un JSON conforme à un schéma (outil forcé avec Claude, mode JSON avec Gemini) ; la réponse est validée par Zod avant d'être enregistrée. Une réponse invalide renvoie une erreur propre plutôt qu'un écran cassé.
 - **XP calculée côté serveur** : le navigateur envoie un résultat (une note, un nombre de bonnes réponses), jamais un montant d'XP.
 - **Profil local** : l'appli est personnelle et utilise un profil unique. L'authentification est prévue dans la feuille de route.

@@ -14,7 +14,7 @@ export default function MethodPage() {
         </p>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {POLYGLOTTE_PRINCIPLES.map((p) => (
           <div key={p.title} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="font-semibold">{p.title}</h2>
@@ -63,12 +63,11 @@ export default function MethodPage() {
       </div>
 
       <section className="mt-10 rounded-2xl bg-stone-900 p-6 text-stone-100">
-        <h2 className="text-lg font-bold">Une routine de 20 minutes par jour</h2>
-        <ol className="mt-3 grid gap-3 text-sm sm:grid-cols-4">
-          <li><strong className="block text-white">1. Réviser · 5 min</strong>Les cartes du jour, à voix haute.</li>
-          <li><strong className="block text-white">2. Lire & écouter · 5 min</strong>Une histoire courte, puis le quiz.</li>
-          <li><strong className="block text-white">3. Parler · 5 min</strong>Cinq échanges avec le tuteur.</li>
-          <li><strong className="block text-white">4. Écrire · 5 min</strong>Quelques phrases dans ton journal.</li>
+        <h2 className="text-lg font-bold">Comment l&apos;utiliser</h2>
+        <ol className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+          <li><strong className="block text-white">1. Le parcours</strong>Une leçon à la fois, dans l&apos;ordre. C&apos;est ton fil directeur.</li>
+          <li><strong className="block text-white">2. Les révisions</strong>Les mots des leçons reviennent juste avant que tu les oublies.</li>
+          <li><strong className="block text-white">3. L&apos;arcade</strong>Histoires, conversation, répétition, écriture : autant que tu veux.</li>
         </ol>
         <p className="mt-4 text-sm text-stone-400">
           Le tuteur IA ne remplace pas complètement un humain : une séance par semaine avec un vrai natif (italki,

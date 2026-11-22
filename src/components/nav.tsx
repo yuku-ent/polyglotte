@@ -7,7 +7,8 @@ import { useProfile } from "./providers";
 import { cx } from "./ui";
 
 const LINKS = [
-  { href: "/", label: "Aujourd'hui" },
+  { href: "/", label: "Accueil" },
+  { href: "/parcours", label: "Parcours" },
   { href: "/revisions", label: "Réviser" },
   { href: "/lire", label: "Lire & écouter" },
   { href: "/parler", label: "Parler" },
@@ -19,7 +20,9 @@ const LINKS = [
 
 export function Nav() {
   const pathname = usePathname();
-  const { data, lang, setLang } = useProfile();
+  const { data, lang, setLang, minutesToday } = useProfile();
+  if (pathname === "/bienvenue") return null;
+  const minReached = data ? minutesToday >= data.profile.minMinutes : false;
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur">
@@ -50,8 +53,14 @@ export function Nav() {
           <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700" title="Jours d'affilée">
             🔥 {data?.profile.streak ?? 0}
           </span>
-          <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[var(--accent-strong)]" title="XP aujourd'hui / objectif">
-            {data?.today.xp ?? 0}/{data?.profile.dailyGoal ?? 50} XP
+          <span
+            className={cx(
+              "rounded-full px-3 py-1",
+              minReached ? "bg-emerald-50 text-emerald-700" : "bg-[var(--accent-soft)] text-[var(--accent-strong)]",
+            )}
+            title="Temps d'étude aujourd'hui / minimum fixé (aucun maximum)"
+          >
+            ⏱ {minutesToday}/{data?.profile.minMinutes ?? 15} min{minReached ? " ✓" : ""}
           </span>
         </div>
 

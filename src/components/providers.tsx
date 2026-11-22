@@ -3,11 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { DashboardData } from "@/lib/dashboard";
 import { api, errorMessage } from "@/lib/api-client";
-import { LANGUAGES, getVariety, type Lang, type Level } from "@/lib/languages";
-import { useSpeechSynthesis } from "@/hooks/useSpeech";
+import { LANGUAGES, getVariety, isLang, type Lang, type Level } from "@/lib/languages";
+import { useVoicePlayer } from "@/hooks/useVoice";
 
 /* -------------------------------------------------------------------------- */
-/* Profil, langue en cours et notifications d'XP                              */
+/* Profil, langue en cours, temps d'étude et notifications                    */
 /* -------------------------------------------------------------------------- */
 
 type ProfileContextValue = {
@@ -17,29 +17,89 @@ type ProfileContextValue = {
   level: Level;
   variety: string;
   speechCode: string;
+  /** Minutes étudiées aujourd'hui (mises à jour en direct). */
+  minutesToday: number;
   refresh: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
   updateLanguage: (changes: { level?: Level; variety?: string }) => Promise<void>;
-  setDailyGoal: (goal: number) => Promise<void>;
+  updateProfile: (changes: { name?: string; minMinutes?: number; onboarded?: boolean; currentLang?: Lang }) => Promise<void>;
   notifyXp: (xp: number, label?: string) => void;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 const LANG_STORAGE_KEY = "polyglotte:lang";
+const IDLE_AFTER_MS = 90_000; // sans interaction pendant 90 s, le temps ne compte plus
+const FLUSH_EVERY_MS = 30_000;
 
 type Toast = { id: number; text: string };
+
+/**
+ * Compte le temps d'étude actif (onglet visible et interaction récente)
+ * et l'envoie au serveur par petits morceaux.
+ */
+function useStudyTimer(onFlushed: (seconds: number) => void) {
+  const pending = useRef(0);
+  const lastInteraction = useRef(Date.now());
+
+  useEffect(() => {
+    const touch = () => {
+      lastInteraction.current = Date.now();
+    };
+    const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }));
+
+    const flush = (keepalive = false) => {
+      const seconds = Math.min(120, Math.floor(pending.current));
+      if (seconds < 1) return;
+      pending.current -= seconds;
+      void fetch("/api/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "time", seconds }),
+        keepalive,
+      })
+        .then((res) => {
+          if (res.ok) onFlushed(seconds);
+        })
+        .catch(() => {
+          pending.current += seconds;
+        });
+    };
+
+    const tick = window.setInterval(() => {
+      const active = document.visibilityState === "visible" && Date.now() - lastInteraction.current < IDLE_AFTER_MS;
+      if (active) pending.current += 1;
+    }, 1000);
+    const flusher = window.setInterval(() => flush(), FLUSH_EVERY_MS);
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush(true);
+    };
+    document.addEventListener("visibilitychange", onHide);
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, touch));
+      window.clearInterval(tick);
+      window.clearInterval(flusher);
+      document.removeEventListener("visibilitychange", onHide);
+      flush(true);
+    };
+  }, [onFlushed]);
+}
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [sentSeconds, setSentSeconds] = useState(0);
   const toastId = useRef(0);
 
   const load = useCallback(async (lang?: Lang) => {
     try {
       const query = lang ? `?lang=${lang}` : "";
-      setData(await api<DashboardData>(`/api/profile${query}`));
+      const next = await api<DashboardData>(`/api/profile${query}`);
+      setData(next);
+      setSentSeconds(0); // le serveur a déjà compté le temps envoyé
       setError(null);
     } catch (e) {
       setError(errorMessage(e));
@@ -50,53 +110,60 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     let stored: Lang | undefined;
     try {
       const value = localStorage.getItem(LANG_STORAGE_KEY);
-      if (value === "en" || value === "es" || value === "ar") stored = value;
+      if (isLang(value)) stored = value;
     } catch {
       /* stockage indisponible */
     }
     void load(stored);
   }, [load]);
 
+  const onFlushed = useCallback((seconds: number) => setSentSeconds((s) => s + seconds), []);
+  useStudyTimer(onFlushed);
+
   const lang: Lang = data?.language.lang ?? "en";
   const level = (data?.language.level ?? "A1") as Level;
   const variety = data?.language.variety ?? LANGUAGES[lang].varieties[0].id;
+  const minutesToday = (data?.today.minutes ?? 0) + Math.floor(sentSeconds / 60);
 
-  const setLang = useCallback(async (next: Lang) => {
+  const patch = useCallback(async (body: unknown) => {
     try {
-      localStorage.setItem(LANG_STORAGE_KEY, next);
-    } catch {
-      /* stockage indisponible */
-    }
-    try {
-      setData(await api<DashboardData>("/api/profile", { method: "PATCH", body: { currentLang: next } }));
+      setData(await api<DashboardData>("/api/profile", { method: "PATCH", body }));
+      setSentSeconds(0);
     } catch (e) {
       setError(errorMessage(e));
     }
   }, []);
 
-  const updateLanguage = useCallback(
-    async (changes: { level?: Level; variety?: string }) => {
+  const setLang = useCallback(
+    async (next: Lang) => {
       try {
-        setData(
-          await api<DashboardData>("/api/profile", {
-            method: "PATCH",
-            body: { language: { lang, ...changes } },
-          }),
-        );
-      } catch (e) {
-        setError(errorMessage(e));
+        localStorage.setItem(LANG_STORAGE_KEY, next);
+      } catch {
+        /* stockage indisponible */
       }
+      await patch({ currentLang: next });
     },
-    [lang],
+    [patch],
   );
 
-  const setDailyGoal = useCallback(async (goal: number) => {
-    try {
-      setData(await api<DashboardData>("/api/profile", { method: "PATCH", body: { dailyGoal: goal } }));
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }, []);
+  const updateLanguage = useCallback(
+    (changes: { level?: Level; variety?: string }) => patch({ language: { lang, ...changes } }),
+    [patch, lang],
+  );
+
+  const updateProfile = useCallback(
+    (changes: { name?: string; minMinutes?: number; onboarded?: boolean; currentLang?: Lang }) => {
+      if (changes.currentLang) {
+        try {
+          localStorage.setItem(LANG_STORAGE_KEY, changes.currentLang);
+        } catch {
+          /* stockage indisponible */
+        }
+      }
+      return patch(changes);
+    },
+    [patch],
+  );
 
   const refresh = useCallback(() => load(lang), [load, lang]);
 
@@ -119,13 +186,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       level,
       variety,
       speechCode: getVariety(lang, variety).speechCode,
+      minutesToday,
       refresh,
       setLang,
       updateLanguage,
-      setDailyGoal,
+      updateProfile,
       notifyXp,
     }),
-    [data, error, lang, level, variety, refresh, setLang, updateLanguage, setDailyGoal, notifyXp],
+    [data, error, lang, level, variety, minutesToday, refresh, setLang, updateLanguage, updateProfile, notifyXp],
   );
 
   return (
@@ -154,15 +222,16 @@ export function useProfile() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Synthèse vocale partagée (un seul lecteur pour toute l'appli)              */
+/* Voix partagée (un seul lecteur pour toute l'appli)                         */
 /* -------------------------------------------------------------------------- */
 
-type SpeechContextValue = ReturnType<typeof useSpeechSynthesis>;
+type SpeechContextValue = ReturnType<typeof useVoicePlayer>;
 const SpeechContext = createContext<SpeechContextValue | null>(null);
 
 export function SpeechProvider({ children }: { children: React.ReactNode }) {
-  const speech = useSpeechSynthesis();
-  return <SpeechContext.Provider value={speech}>{children}</SpeechContext.Provider>;
+  const { data } = useProfile();
+  const voice = useVoicePlayer(Boolean(data?.voice.natural));
+  return <SpeechContext.Provider value={voice}>{children}</SpeechContext.Provider>;
 }
 
 export function useTTS() {

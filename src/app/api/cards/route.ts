@@ -2,15 +2,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { PROFILE_ID, getLanguage } from "@/lib/profile";
 import { LANGS, isLang } from "@/lib/languages";
-import { startOfDay } from "@/lib/dates";
 import { toCardDTO } from "@/lib/serialize";
 import { errorResponse, json, parseBody } from "@/lib/http";
 import type { ReviewQueue } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-/** Nouvelles cartes présentées par jour et par langue. */
-const NEW_PER_DAY = 15;
+/** Nouvelles cartes par série. Pas de limite par jour : l'élève continue tant qu'il veut. */
+const NEW_BATCH = 10;
 
 export async function GET(req: Request) {
   try {
@@ -28,10 +27,7 @@ export async function GET(req: Request) {
     }
 
     const now = new Date();
-    const newSeenToday = await prisma.reviewLog.count({
-      where: { wasNew: true, reviewedAt: { gte: startOfDay(now) }, card: { profileId: PROFILE_ID, lang } },
-    });
-    const newLimit = Math.max(0, NEW_PER_DAY - newSeenToday);
+    const newLimit = Math.min(50, Math.max(0, Number(params.get("new") ?? NEW_BATCH) || 0));
 
     const [due, fresh, dueCount, newCount] = await Promise.all([
       prisma.card.findMany({
@@ -59,7 +55,6 @@ export async function GET(req: Request) {
       cards: [...relearn, ...due, ...fresh].map(toCardDTO),
       dueCount: dueCount + relearn.length,
       newCount,
-      newLimit,
     };
     return json(queue);
   } catch (error) {
@@ -73,7 +68,7 @@ const createSchema = z.object({
   translation: z.string().trim().min(1).max(300),
   translit: z.string().trim().max(200).optional().nullable(),
   example: z.string().trim().max(400).optional().nullable(),
-  source: z.enum(["custom", "story", "conversation", "deck"]).default("custom"),
+  source: z.enum(["custom", "story", "conversation", "deck", "lesson"]).default("custom"),
 });
 
 export async function POST(req: Request) {

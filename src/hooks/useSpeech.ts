@@ -163,6 +163,9 @@ export function useSpeechSynthesis() {
       const id = options.id ?? list.join(" ");
       setSpeakingId(id);
 
+      // Chrome ignore parfois une lecture lancée juste après cancel() : on laisse passer un instant.
+      window.setTimeout(() => {
+      synth.resume();
       list.forEach((text, index) => {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = voice?.lang ?? langCode;
@@ -178,6 +181,7 @@ export function useSpeechSynthesis() {
         }
         synth.speak(utterance);
       });
+      }, 80);
     },
     [],
   );

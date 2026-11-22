@@ -3,7 +3,8 @@ import { prisma } from "./db";
 import { PROFILE_ID, getLanguage, getProfile } from "./profile";
 import { isLang } from "./languages";
 import { dayKey, displayedStreak, lastNDays } from "./dates";
-import { aiConfigured } from "./ai";
+import { aiConfigured, geminiConfigured } from "./ai";
+import { courseOverview } from "./course";
 
 export async function dashboard(langParam?: string | null) {
   const profile = await getProfile();
@@ -13,18 +14,16 @@ export async function dashboard(langParam?: string | null) {
   const days = lastNDays(7, today);
   const now = new Date();
 
-  const [activity, languages, total, due, newCount, inProgress, mastered, journal, stories] =
-    await Promise.all([
-      prisma.activityDay.findMany({ where: { profileId: PROFILE_ID, day: { in: days } } }),
-      prisma.languageProgress.findMany({ where: { profileId: PROFILE_ID } }),
-      prisma.card.count({ where: { profileId: PROFILE_ID, lang } }),
-      prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: { gt: 0 }, dueAt: { lte: now } } }),
-      prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: 0 } }),
-      prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: { gt: 0 }, interval: { lt: 21 } } }),
-      prisma.card.count({ where: { profileId: PROFILE_ID, lang, interval: { gte: 21 } } }),
-      prisma.journalEntry.count({ where: { profileId: PROFILE_ID, lang } }),
-      prisma.story.count({ where: { profileId: PROFILE_ID, lang } }),
-    ]);
+  const [activity, languages, total, due, newCount, inProgress, mastered, course] = await Promise.all([
+    prisma.activityDay.findMany({ where: { profileId: PROFILE_ID, day: { in: days } } }),
+    prisma.languageProgress.findMany({ where: { profileId: PROFILE_ID } }),
+    prisma.card.count({ where: { profileId: PROFILE_ID, lang } }),
+    prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: { gt: 0 }, dueAt: { lte: now } } }),
+    prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: 0 } }),
+    prisma.card.count({ where: { profileId: PROFILE_ID, lang, reps: { gt: 0 }, interval: { lt: 21 } } }),
+    prisma.card.count({ where: { profileId: PROFILE_ID, lang, interval: { gte: 21 } } }),
+    courseOverview(lang),
+  ]);
 
   const byDay = new Map(activity.map((a) => [a.day, a]));
   const todayRow = byDay.get(today);
@@ -33,25 +32,25 @@ export async function dashboard(langParam?: string | null) {
     profile: {
       name: profile.name,
       currentLang: lang,
-      dailyGoal: profile.dailyGoal,
+      minMinutes: profile.minMinutes,
+      onboarded: profile.onboarded,
       xp: profile.xp,
       streak: displayedStreak(profile.lastActiveDay, today, profile.streak),
       bestStreak: profile.bestStreak,
     },
-    language: { lang, level: language.level, variety: language.variety },
+    language: { lang, level: language.level, variety: language.variety, placed: language.placed },
     languages: languages.map((l) => ({ lang: l.lang, level: l.level, variety: l.variety })),
     today: {
       xp: todayRow?.xp ?? 0,
+      minutes: Math.floor((todayRow?.seconds ?? 0) / 60),
+      lessons: todayRow?.lessons ?? 0,
       reviews: todayRow?.reviews ?? 0,
-      stories: todayRow?.stories ?? 0,
-      speakTurns: todayRow?.speakTurns ?? 0,
-      shadowing: todayRow?.shadowing ?? 0,
-      writings: todayRow?.writings ?? 0,
-      alphabet: todayRow?.alphabet ?? 0,
     },
-    week: days.map((day) => ({ day, xp: byDay.get(day)?.xp ?? 0 })),
-    stats: { total, due, newCount, inProgress, mastered, journal, stories },
+    week: days.map((day) => ({ day, minutes: Math.floor((byDay.get(day)?.seconds ?? 0) / 60) })),
+    stats: { total, due, newCount, inProgress, mastered },
+    course: { next: course.next, done: course.done, total: course.total },
     aiConfigured: aiConfigured(),
+    voice: { natural: geminiConfigured() },
   };
 }
 

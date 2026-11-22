@@ -285,3 +285,171 @@ export function phrasesPrompt(ctx: LearnerContext, topic: string) {
   const prompt = `Donne 8 phrases sur le thème : « ${topic} ».`;
   return { system, prompt };
 }
+
+/* ------------------------------------------------------------------ */
+/* Leçons du parcours                                                  */
+/* ------------------------------------------------------------------ */
+
+export const LESSON_VERSION = 1;
+export const EXERCISE_TYPES = ["choice", "listen", "order", "fill", "speak"] as const;
+
+const textItem = {
+  type: "object",
+  properties: { text: str, translation: str, translit: str },
+  required: ["text", "translation", "translit"],
+} as const;
+
+export const lessonSchema: Schema = {
+  type: "object",
+  properties: {
+    intro: { type: "string", description: "2 phrases en français : ce que l'élève va apprendre et pourquoi c'est utile." },
+    words: {
+      type: "array",
+      description: "5 à 8 mots ou expressions clés de la leçon.",
+      items: {
+        type: "object",
+        properties: { term: str, translation: str, translit: str, example: str, example_translation: str },
+        required: ["term", "translation", "translit", "example", "example_translation"],
+      },
+    },
+    grammar: {
+      type: "object",
+      properties: {
+        title: str,
+        explanation: {
+          type: "string",
+          description: "Explication en français, simple et concrète, 4 à 8 phrases. Paragraphes séparés par une ligne vide. Pas de markdown.",
+        },
+        examples: { type: "array", description: "3 à 5 exemples.", items: textItem },
+      },
+      required: ["title", "explanation", "examples"],
+    },
+    dialogue: {
+      type: "array",
+      description: "Petit dialogue de 4 à 8 répliques entre deux personnages (A et B) qui réutilise la leçon.",
+      items: {
+        type: "object",
+        properties: { speaker: { type: "string", enum: ["A", "B"] }, text: str, translation: str, translit: str },
+        required: ["speaker", "text", "translation", "translit"],
+      },
+    },
+    exercises: {
+      type: "array",
+      description: "10 à 12 exercices variés, du plus facile au plus difficile, mélangeant les 5 types.",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: [...EXERCISE_TYPES] },
+          prompt: { type: "string", description: "Consigne ou question en français." },
+          text: { type: "string", description: "Phrase dans la langue cible (voir les règles par type)." },
+          translit: str,
+          translation: str,
+          options: { type: "array", items: str },
+          answer: { type: "integer", description: "Index de la bonne option (0 si pas d'options)." },
+          explanation: { type: "string", description: "Pourquoi c'est la bonne réponse, en français, 1 phrase." },
+        },
+        required: ["type", "prompt", "text", "translit", "translation", "options", "answer", "explanation"],
+      },
+    },
+  },
+  required: ["intro", "words", "grammar", "dialogue", "exercises"],
+};
+
+const zText = z.object({ text: z.string().min(1), translation: z.string().default(""), translit: z.string().default("") });
+
+export const zLesson = z.object({
+  intro: z.string().default(""),
+  words: z
+    .array(
+      z.object({
+        term: z.string().min(1),
+        translation: z.string().min(1),
+        translit: z.string().default(""),
+        example: z.string().default(""),
+        example_translation: z.string().default(""),
+      }),
+    )
+    .min(3),
+  grammar: z.object({
+    title: z.string().default(""),
+    explanation: z.string().default(""),
+    examples: z.array(zText).default([]),
+  }),
+  dialogue: z
+    .array(
+      z.object({
+        speaker: z.string().default("A"),
+        text: z.string().min(1),
+        translation: z.string().default(""),
+        translit: z.string().default(""),
+      }),
+    )
+    .default([]),
+  exercises: z.array(
+    z.object({
+      type: z.enum(EXERCISE_TYPES),
+      prompt: z.string().default(""),
+      text: z.string().default(""),
+      translit: z.string().default(""),
+      translation: z.string().default(""),
+      options: z.array(z.string()).default([]),
+      answer: z.number().int().min(0).default(0),
+      explanation: z.string().default(""),
+    }),
+  ),
+});
+export type LessonContent = z.infer<typeof zLesson>;
+export type Exercise = LessonContent["exercises"][number];
+
+/** Retire les exercices incohérents (mauvais index, trou manquant…). */
+export function cleanExercises(exercises: Exercise[]): Exercise[] {
+  return exercises.filter((ex) => {
+    switch (ex.type) {
+      case "choice":
+      case "listen":
+        return ex.options.length >= 2 && ex.answer < ex.options.length && (ex.type === "choice" || ex.text.trim() !== "");
+      case "fill":
+        return ex.text.includes("___") && ex.options.length >= 2 && ex.answer < ex.options.length;
+      case "order":
+        return ex.text.trim().split(/\s+/).length >= 2;
+      case "speak":
+        return ex.text.trim() !== "";
+    }
+  });
+}
+
+export function lessonPrompt(
+  ctx: LearnerContext,
+  plan: { title: string; goal: string; vocab: string; grammar: string; review?: boolean; unitTitle: string },
+  previousTitles: string[],
+) {
+  const improvement = ctx.lang === "fr";
+  const system = [
+    "Tu es un concepteur de cours de langue expérimenté. Tu écris UNE leçon d'un parcours progressif, pour un élève qui apprend seul.",
+    describeLearner(ctx),
+    improvement
+      ? "Cas particulier : l'élève est francophone et se perfectionne en français. Les champs « translation » contiennent une reformulation simple ou une explication, pas une traduction. Les exercices portent sur l'orthographe, la grammaire et le mot juste."
+      : "Les champs « translation » contiennent la traduction française.",
+    "Règles des exercices selon « type » :",
+    "- choice : question en français dans « prompt » (sens d'un mot, bonne forme grammaticale…), 4 « options », « answer » = index de la bonne. « text » peut contenir une phrase cible liée ou rester vide.",
+    improvement
+      ? "- listen : « text » = phrase lue à voix haute ; « options » = 4 façons de l'écrire dont une seule sans faute ; « answer » = index de la bonne."
+      : "- listen : « text » = phrase cible lue à voix haute (non affichée) ; « options » = 4 traductions françaises, une seule correcte ; « answer » = index.",
+    "- order : « text » = phrase cible correcte de 3 à 9 mots (l'appli mélange les mots) ; « translation » = son sens en français.",
+    "- fill : « text » = phrase cible avec exactement un trou écrit ___ ; « options » = 4 mots ou formes pour le trou ; « answer » = index ; « translation » = sens de la phrase complète.",
+    "- speak : « text » = phrase cible courte à dire au micro ; « translation » = son sens.",
+    "Mets « options » à [] et « answer » à 0 quand le type n'a pas d'options. Les mauvaises options doivent être plausibles.",
+    "Ne réutilise que le vocabulaire déjà vu dans le parcours ou présenté dans cette leçon, sauf pour les mots-outils très courants.",
+  ].join("\n");
+
+  const prompt = [
+    `Unité : ${plan.unitTitle}`,
+    `Leçon : ${plan.title}${plan.review ? " (leçon de révision : mélange tout le contenu de l'unité, pas de nouveau point de grammaire, et 12 exercices)" : ""}`,
+    `Objectif : ${plan.goal}`,
+    `Vocabulaire : ${plan.vocab}`,
+    `Grammaire : ${plan.grammar}`,
+    previousTitles.length ? `Leçons déjà vues : ${previousTitles.join(" ; ")}` : "C'est la toute première leçon : l'élève ne sait encore rien.",
+  ].join("\n");
+
+  return { system, prompt };
+}

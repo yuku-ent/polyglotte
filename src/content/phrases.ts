@@ -34,4 +34,14 @@ export const STARTER_PHRASES: Record<Lang, Phrase[]> = {
     { text: "لا أوافق، لكنني أفهم وجهة نظرك", translit: "lā uwāfiq, lākinnanī afhamu wijhata naẓarik", translation: "Je ne suis pas d'accord, mais je comprends ton point de vue." },
     { text: "ماذا تنصحني؟", translit: "mādhā tanṣaḥunī?", translation: "Que me conseilles-tu ?" },
   ],
+  fr: [
+    { text: "Les chaussettes de l'archiduchesse sont-elles sèches, archi-sèches ?", translation: "Virelangue pour l'articulation." },
+    { text: "Je vous remercie pour votre retour rapide.", translation: "Formule professionnelle courante." },
+    { text: "Permettez-moi de vous présenter notre projet en quelques mots.", translation: "Ouvrir un pitch." },
+    { text: "Ce bien offre un rendement locatif d'environ huit pour cent.", translation: "Parler d'un investissement." },
+    { text: "Quoi qu'il arrive, nous tiendrons nos engagements.", translation: "« Quoi que » en deux mots." },
+    { text: "Les décisions qu'ils ont prises nous ont surpris.", translation: "Accord du participe passé avec avoir." },
+    { text: "Il faudrait que nous en discutions avant la fin de la semaine.", translation: "Subjonctif après « il faut que »." },
+    { text: "Un chasseur sachant chasser doit savoir chasser sans son chien.", translation: "Virelangue : les sons s et ch." },
+  ],
 };

@@ -20,7 +20,6 @@ export type ReviewQueue = {
   cards: CardDTO[];
   dueCount: number;
   newCount: number;
-  newLimit: number;
 };
 
 export type WordDTO = { term: string; translation: string; translit: string };

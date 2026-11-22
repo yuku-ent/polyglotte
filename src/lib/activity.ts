@@ -10,6 +10,8 @@ export const ACTIVITY_KINDS = [
   "shadowing",
   "writings",
   "alphabet",
+  "lessons",
+  "seconds",
 ] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 

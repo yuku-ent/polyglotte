@@ -29,6 +29,11 @@
   --accent-strong: #b8410f;
   --accent-soft: #fff4ed;
 }
+[data-lang="fr"] {
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --accent-soft: #f5f3ff;
+}
 [data-lang="ar"] {
   --accent: #0f8a5f;
   --accent-strong: #0a6b49;

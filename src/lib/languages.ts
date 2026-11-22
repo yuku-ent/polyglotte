@@ -1,4 +1,4 @@
-export const LANGS = ["en", "es", "ar"] as const;
+export const LANGS = ["en", "es", "ar", "fr"] as const;
 export type Lang = (typeof LANGS)[number];
 
 export const LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
@@ -44,6 +44,20 @@ export const LANGUAGES: Record<Lang, LanguageInfo> = {
         label: "Amérique latine",
         speechCode: "es-MX",
         promptName: "espagnol d'Amérique latine",
+      },
+    ],
+  },
+  fr: {
+    id: "fr",
+    name: "Français",
+    nativeName: "Français",
+    dir: "ltr",
+    varieties: [
+      {
+        id: "standard",
+        label: "Français standard",
+        speechCode: "fr-FR",
+        promptName: "français standard (perfectionnement pour un francophone)",
       },
     ],
   },
@@ -105,3 +119,15 @@ export function getVariety(lang: Lang, varietyId?: string | null): Variety {
 export function defaultVariety(lang: Lang): string {
   return LANGUAGES[lang].varieties[0].id;
 }
+
+/** Le français est étudié en perfectionnement : pas de traduction, mais des reformulations. */
+export function isImprovement(lang: Lang): boolean {
+  return lang === "fr";
+}
+
+/** Libellé de la colonne « traduction » selon la langue. */
+export function meaningLabel(lang: Lang): string {
+  return isImprovement(lang) ? "Sens" : "Traduction";
+}
+
+export const LANG_CODES: Record<Lang, string> = { en: "en", es: "es", ar: "ar", fr: "fr" };

@@ -20,7 +20,8 @@ export async function GET(req: Request) {
 const patchSchema = z.object({
   name: z.string().trim().max(60).optional(),
   currentLang: z.enum(LANGS).optional(),
-  dailyGoal: z.number().int().min(10).max(500).optional(),
+  minMinutes: z.number().int().min(5).max(180).optional(),
+  onboarded: z.boolean().optional(),
   language: z
     .object({
       lang: z.enum(LANGS),
@@ -35,13 +36,14 @@ export async function PATCH(req: Request) {
     const body = await parseBody(req, patchSchema);
     await getProfile();
 
-    if (body.name !== undefined || body.currentLang || body.dailyGoal) {
+    if (body.name !== undefined || body.currentLang || body.minMinutes || body.onboarded !== undefined) {
       await prisma.profile.update({
         where: { id: PROFILE_ID },
         data: {
           name: body.name,
           currentLang: body.currentLang,
-          dailyGoal: body.dailyGoal,
+          minMinutes: body.minMinutes,
+          onboarded: body.onboarded,
         },
       });
     }

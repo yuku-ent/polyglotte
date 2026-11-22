@@ -14,11 +14,13 @@ export const PLATFORMS: PlatformReview[] = [
     kind: "Leçons ludiques",
     strengths: ["Gratuit et très motivant", "Séries (streaks), XP et objectif quotidien", "Sessions courtes"],
     weaknesses: [
+      "Quotas et limites qui coupent l'élan",
       "Phrases artificielles, peu d'oral réel",
       "On plafonne vite au niveau intermédiaire",
       "Arabe limité",
     ],
-    inPolyglotte: "Série, XP, objectif du jour et missions quotidiennes, mais avec du vrai contenu.",
+    inPolyglotte:
+      "La motivation (série, XP) sans les quotas : un temps minimum par jour, jamais de maximum, et un vrai parcours de cours.",
   },
   {
     name: "Babbel",
@@ -77,6 +79,10 @@ export const PLATFORMS: PlatformReview[] = [
 
 export const POLYGLOTTE_PRINCIPLES = [
   {
+    title: "Un vrai parcours",
+    text: "Des unités et des leçons dans l'ordre, du tout premier mot jusqu'au niveau B1 : chaque leçon apprend des mots, une règle et les met en pratique.",
+  },
+  {
     title: "Une seule appli, toutes les compétences",
     text: "Vocabulaire, compréhension, oral et écrit au même endroit, avec une seule progression.",
   },
@@ -93,7 +99,7 @@ export const POLYGLOTTE_PRINCIPLES = [
     text: "Alphabet interactif, translittération partout, et choix entre l'arabe standard et trois dialectes.",
   },
   {
-    title: "La régularité avant tout",
-    text: "Objectif quotidien, série et missions du jour : 20 minutes par jour valent mieux que 3 heures le dimanche.",
+    title: "Un minimum, jamais de maximum",
+    text: "Tu fixes un temps minimum par jour. Une fois atteint, tu continues autant que tu veux : aucune leçon n'est bloquée par un quota.",
   },
 ];

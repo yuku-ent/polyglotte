@@ -34,7 +34,7 @@ export function aiConfigured(): boolean {
 }
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 
 type StructuredRequest<T> = {
   system: string;
@@ -83,6 +83,31 @@ function extractJson(text: string): unknown {
   }
 }
 
+export type GeminiResponse = {
+  candidates?: { content?: { parts?: { text?: string; inlineData?: { mimeType?: string; data?: string } }[] } }[];
+};
+
+export function geminiConfigured(): boolean {
+  return Boolean(process.env.GEMINI_API_KEY);
+}
+
+/** Appel brut à l'API Gemini, avec des erreurs converties en statuts lisibles. */
+export async function geminiRequest(model: string, body: unknown): Promise<GeminiResponse> {
+  if (!process.env.GEMINI_API_KEY) throw new AiUnavailableError();
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("[ai] Gemini", model, res.status, detail.slice(0, 500));
+    // 400/403 : clé invalide ou modèle inconnu → traité comme un problème de clé.
+    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 502 : 401, "Gemini");
+  }
+  return (await res.json()) as GeminiResponse;
+}
+
 async function callGemini(req: StructuredRequest<unknown>): Promise<unknown> {
   const instructions = [
     req.system,
@@ -92,36 +117,15 @@ async function callGemini(req: StructuredRequest<unknown>): Promise<unknown> {
     JSON.stringify(req.jsonSchema),
   ].join("\n");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: "user", parts: [{ text: req.prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          maxOutputTokens: Math.max(2048, (req.maxTokens ?? 2000) * 2),
-          temperature: 0.8,
-        },
-      }),
+  const data = await geminiRequest(GEMINI_MODEL, {
+    systemInstruction: { parts: [{ text: instructions }] },
+    contents: [{ role: "user", parts: [{ text: req.prompt }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: Math.max(4096, (req.maxTokens ?? 2000) * 2),
+      temperature: 0.8,
     },
-  );
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    console.error("[ai] Gemini", res.status, detail.slice(0, 500));
-    // 400/403 : clé invalide ou modèle inconnu → traité comme un problème de clé.
-    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 502 : 401, "Gemini");
-  }
-
-  const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
+  });
   const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   if (!text) throw new AiResponseError();
   return extractJson(text);

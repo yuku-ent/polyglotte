@@ -35,7 +35,7 @@ export default function RevisionsPage() {
     try {
       const data = await api<ReviewQueue>(`/api/cards?lang=${lang}`);
       setQueue(data.cards);
-      setMeta({ dueCount: data.dueCount, newCount: data.newCount, newLimit: data.newLimit });
+      setMeta({ dueCount: data.dueCount, newCount: data.newCount });
       setDone(0);
       setSessionXp(0);
       setRevealed(false);
@@ -137,13 +137,19 @@ export default function RevisionsPage() {
         <Spinner label="Préparation de la session…" />
       ) : finished ? (
         <EmptyState
-          title={done ? `Session terminée : ${done} carte${done > 1 ? "s" : ""} révisée${done > 1 ? "s" : ""} 💪` : "Rien à réviser pour l'instant"}
+          title={done ? `${done} carte${done > 1 ? "s" : ""} révisée${done > 1 ? "s" : ""} 💪` : "Tout est à jour"}
           text={
-            done
-              ? "Reviens demain : les mots reviendront au bon moment."
-              : "Toutes tes cartes sont à jour. Ajoute des mots depuis les histoires ou dans « Mes mots »."
+            meta && meta.newCount > 0
+              ? "Tes révisions du moment sont faites. Tu peux continuer avec de nouveaux mots, autant que tu veux."
+              : "Plus rien à réviser pour l'instant. Les leçons du parcours ajoutent de nouveaux mots automatiquement."
           }
-          action={<Button onClick={() => void load()}>Vérifier à nouveau</Button>}
+          action={
+            meta && meta.newCount > 0 ? (
+              <Button onClick={() => void load()}>Encore 10 nouveaux mots →</Button>
+            ) : (
+              <Button onClick={() => void load()}>Vérifier à nouveau</Button>
+            )
+          }
         />
       ) : (
         card && (
@@ -151,7 +157,6 @@ export default function RevisionsPage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-stone-600">
               <span>
                 {queue.length} restante{queue.length > 1 ? "s" : ""} · {done} faite{done > 1 ? "s" : ""}
-                {meta && ` · ${meta.newLimit} nouvelles max aujourd'hui`}
               </span>
               <label className="flex items-center gap-2">
                 Sens
