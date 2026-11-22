@@ -62,6 +62,8 @@ export default function Home() {
 
   const practice = [
     { href: "/revisions", title: "Réviser", text: stats.due ? `${stats.due} mot${stats.due > 1 ? "s" : ""} à revoir` : "Apprendre de nouveaux mots", icon: "🧠" },
+    { href: "/dictee", title: "Dictée", text: "Écoute, écris, corrige", icon: "🎧" },
+    { href: "/traduire", title: "Traduire", text: "Un texte corrigé par l'IA", icon: "🔁" },
     { href: "/lire", title: "Lire & écouter", text: "Une histoire à ton niveau", icon: "📖" },
     { href: "/parler", title: "Parler", text: "Jeux de rôle avec le tuteur", icon: "💬" },
     { href: "/repeter", title: "Répéter", text: "Prononciation au micro", icon: "🎙" },
@@ -148,9 +150,14 @@ export default function Home() {
 
       {/* Entraînement libre : mode arcade */}
       <section>
-        <div className="mb-3">
-          <h2 className="text-lg font-bold">Entraînement libre</h2>
-          <p className="text-sm text-stone-600">Comme une borne d&apos;arcade : tu joues tant que tu veux, tu arrêtes quand tu veux.</p>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold">Arcade</h2>
+            <p className="text-sm text-stone-600">Tu joues tant que tu veux, tu arrêtes quand tu veux.</p>
+          </div>
+          <Link href="/arcade" className="text-sm font-medium text-[var(--accent-strong)] hover:underline">
+            Tous les modes →
+          </Link>
         </div>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {practice.map((p) => (

@@ -25,6 +25,10 @@ L'arabe a droit à un traitement à part : alphabet interactif, translittératio
 - **Accueil** : premier lancement guidé (langue, niveau, temps minimum), puis « Continuer le parcours », temps d'étude du jour, entraînement libre et réglages.
 - **Parcours** : 5 à 6 unités par langue, 4 à 5 leçons chacune, et une révision en fin d'unité. Chaque leçon : objectif, mots nouveaux avec audio, une règle expliquée en français, un dialogue, puis 10 à 12 exercices variés (choix, écoute, remettre dans l'ordre, phrase à trou, parler au micro). Les erreurs reviennent à la fin, les mots rejoignent les révisions. Placement selon le niveau et bouton « Je connais déjà » pour passer une unité.
 - **Réviser** : répétition espacée (SM-2), sans limite de nouveaux mots.
+- **Dictée** : écoute (normale, lente ou par morceaux), écris, et vois chaque faute mot par mot (faux, accent, oublié, en trop) ; indice possible, clavier arabe à l'écran.
+- **Recopie** : le texte est affiché, chaque lettre se colore en direct ; précision et mots par minute.
+- **Traduire** : un texte à traduire vers le français ou vers la langue, corrigé par l'IA (sens, grammaire, version d'un natif).
+- **Arcade** : la page qui regroupe tous les modes libres.
 - **Lire & écouter** : histoires générées à ton niveau, audio phrase par phrase, traduction, quiz.
 - **Parler** : jeux de rôle avec un tuteur IA, au micro ou au clavier, chaque message corrigé et expliqué.
 - **Répéter** : shadowing avec note de prononciation mot par mot.
@@ -121,6 +125,7 @@ src/
   hooks/                 Voix (useVoice), micro (useRecorder), Web Speech (useSpeech)
   lib/
     srs.ts               Algorithme SM-2 (fonctions pures)
+    diff.ts              Correction de dictée mot à mot
     scoring.ts           Comparaison phrase attendue / phrase entendue
     prompts.ts           Consignes et schémas JSON envoyés à Claude
     ai.ts                Appel à l'IA (Claude ou Gemini) avec sortie structurée

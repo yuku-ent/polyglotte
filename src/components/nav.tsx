@@ -7,14 +7,13 @@ import { useProfile } from "./providers";
 import { cx } from "./ui";
 import { Logo } from "./logo";
 
+const ARCADE_PATHS = ["/arcade", "/dictee", "/traduire", "/lire", "/parler", "/repeter", "/ecrire"];
+
 const LINKS = [
   { href: "/", label: "Accueil" },
   { href: "/parcours", label: "Parcours" },
   { href: "/revisions", label: "Réviser" },
-  { href: "/lire", label: "Lire & écouter" },
-  { href: "/parler", label: "Parler" },
-  { href: "/repeter", label: "Répéter" },
-  { href: "/ecrire", label: "Écrire" },
+  { href: "/arcade", label: "Arcade" },
   { href: "/alphabet", label: "Alphabet", onlyFor: "ar" as const },
   { href: "/methode", label: "La méthode" },
 ];
@@ -66,7 +65,12 @@ export function Nav() {
 
         <nav className="-mx-1 flex w-full gap-1 overflow-x-auto pb-1" aria-label="Navigation principale">
           {LINKS.filter((link) => !link.onlyFor || link.onlyFor === lang).map((link) => {
-            const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+            const active =
+              link.href === "/"
+                ? pathname === "/"
+                : link.href === "/arcade"
+                  ? ARCADE_PATHS.some((p) => pathname.startsWith(p))
+                  : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}

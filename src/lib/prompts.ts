@@ -463,3 +463,75 @@ export function lessonPrompt(
 
   return { system, prompt };
 }
+
+/* ------------------------------------------------------------------ */
+/* Textes d'entraînement (dictée, shadowing, traduction)               */
+/* ------------------------------------------------------------------ */
+
+export const TEXT_PURPOSES = ["dictation", "shadowing", "translation"] as const;
+export type TextPurpose = (typeof TEXT_PURPOSES)[number];
+
+export const TEXT_LENGTHS = { court: "4 à 5 phrases", moyen: "6 à 8 phrases", long: "10 à 12 phrases" } as const;
+export type TextLength = keyof typeof TEXT_LENGTHS;
+
+export const practiceTextSchema: Schema = {
+  type: "object",
+  properties: {
+    title: str,
+    sentences: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { text: str, translation: str, translit: str },
+        required: ["text", "translation", "translit"],
+      },
+    },
+  },
+  required: ["title", "sentences"],
+};
+
+export const zPracticeText = z.object({
+  title: z.string().default(""),
+  sentences: z
+    .array(z.object({ text: z.string().min(1), translation: z.string().default(""), translit: z.string().default("") }))
+    .min(1),
+});
+export type PracticeText = z.infer<typeof zPracticeText>;
+
+const PURPOSE_RULES: Record<TextPurpose, string> = {
+  dictation:
+    "Le texte sert à une DICTÉE : phrases bien construites, orthographe et accords intéressants à travailler, sans noms propres rares ni chiffres écrits en chiffres. Une phrase par élément.",
+  shadowing:
+    "Le texte sert au SHADOWING (écouter puis répéter à voix haute) : phrases naturelles à l'oral, rythme vivant, longueur adaptée au niveau. Une phrase par élément.",
+  translation:
+    "Le texte sert à un exercice de TRADUCTION : phrases claires et naturelles, chacune avec une traduction française fidèle et naturelle. Une phrase par élément.",
+};
+
+export function practiceTextPrompt(ctx: LearnerContext, purpose: TextPurpose, topic: string, length: TextLength) {
+  const system = [
+    "Tu écris de courts textes suivis (pas des phrases isolées) pour s'entraîner dans une langue.",
+    describeLearner(ctx),
+    PURPOSE_RULES[purpose],
+  ].join("\n");
+  const prompt = `Thème : « ${topic} ». Longueur : ${TEXT_LENGTHS[length]}.`;
+  return { system, prompt };
+}
+
+export function translationCheckPrompt(
+  ctx: LearnerContext,
+  direction: "to_target" | "to_french",
+  source: string,
+  reference: string,
+  attempt: string,
+) {
+  const target = getVariety(ctx.lang, ctx.variety).promptName;
+  const into = direction === "to_target" ? target : "français";
+  const system = [
+    `Tu es un professeur de traduction exigeant et bienveillant. L'élève traduit vers le ${into}.`,
+    describeLearner(ctx),
+    "Évalue le SENS (rien d'oublié, rien d'ajouté, contresens), la grammaire et le naturel. Accepte toute traduction correcte, même différente de la référence.",
+    "« corrected » : la traduction de l'élève corrigée en gardant ses choix quand ils sont justes. « natural » : la traduction qu'écrirait un natif. « errors » : les fautes et contresens, expliqués en français.",
+  ].join("\n");
+  const prompt = `Texte d'origine :\n"""\n${source}\n"""\n\nTraduction de référence (indicative) :\n"""\n${reference}\n"""\n\nTraduction de l'élève :\n"""\n${attempt}\n"""`;
+  return { system, prompt };
+}

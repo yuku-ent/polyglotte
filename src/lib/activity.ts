@@ -11,6 +11,8 @@ export const ACTIVITY_KINDS = [
   "writings",
   "alphabet",
   "lessons",
+  "dictations",
+  "translations",
   "seconds",
 ] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];

@@ -100,6 +100,8 @@ model ActivityDay {
   writings   Int    @default(0)
   alphabet   Int    @default(0)
   lessons    Int    @default(0)
+  dictations   Int  @default(0)
+  translations Int  @default(0)
   seconds    Int    @default(0) // temps d'étude actif
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
