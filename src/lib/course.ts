@@ -121,15 +121,7 @@ export async function lessonContent(lessonId: string): Promise<LessonContent> {
     return result;
   };
 
-  let content: LessonContent;
-  try {
-    content = await generate();
-  } catch (error) {
-    // Une réponse ratée ou une surcharge passagère : on retente une fois.
-    const status = (error as { status?: number }).status;
-    if (!(error instanceof AiResponseError) && status !== 502 && status !== 503) throw error;
-    content = await generate();
-  }
+  const content: LessonContent = await generate();
 
   await prisma.lessonContent.upsert({
     where: { id: cacheId },

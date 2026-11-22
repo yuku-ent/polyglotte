@@ -91,8 +91,14 @@ export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-/** Appel brut à l'API Gemini, avec des erreurs converties en statuts lisibles. */
-export async function geminiRequest(model: string, body: unknown): Promise<GeminiResponse> {
+/** Modèles de secours, essayés quand le modèle principal est saturé ou trop lent. */
+export const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || "gemini-flash-lite-latest")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+/** Appel brut à l'API Gemini, avec une limite de temps et des erreurs converties en statuts lisibles. */
+export async function geminiRequest(model: string, body: unknown, timeoutMs = 50_000): Promise<GeminiResponse> {
   if (!process.env.GEMINI_API_KEY) throw new AiUnavailableError();
   let res: Response;
   try {
@@ -100,19 +106,48 @@ export async function geminiRequest(model: string, body: unknown): Promise<Gemin
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (e) {
-    console.error("[ai] Gemini injoignable", e);
-    throw new ProviderHttpError(502, "Gemini injoignable");
+    const timedOut = (e as { name?: string }).name === "TimeoutError";
+    console.error("[ai] Gemini", model, timedOut ? "trop lent" : "injoignable", e);
+    throw new ProviderHttpError(503, timedOut ? `Gemini (${model}) : trop lent` : "Gemini injoignable");
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error("[ai] Gemini", model, res.status, detail.slice(0, 500));
-    // 400/403 : clé invalide ou modèle inconnu → traité comme un problème de clé.
+    // 400/403/404 : clé invalide ou modèle inconnu → traité comme un problème de clé.
     const reason = /"message":\s*"([^"]+)"/.exec(detail)?.[1] ?? `HTTP ${res.status}`;
-    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 502 : 401, `Gemini (${model}) : ${reason}`);
+    throw new ProviderHttpError(res.status === 429 ? 429 : res.status >= 500 ? 503 : 401, `Gemini (${model}) : ${reason}`);
   }
   return (await res.json()) as GeminiResponse;
+}
+
+/**
+ * Essaie le modèle principal, puis les modèles de secours si Google est saturé
+ * (503), trop lent, ou si le quota du modèle est épuisé (429).
+ * Le tout tient dans la limite de 60 s d'une fonction Vercel.
+ */
+export async function geminiWithFallback(body: unknown, budgetMs = 54_000): Promise<GeminiResponse> {
+  const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== GEMINI_MODEL)];
+  const started = Date.now();
+  let lastError: unknown;
+  for (let i = 0; i < models.length; i++) {
+    const remaining = budgetMs - (Date.now() - started);
+    if (remaining < 5_000) break;
+    // Le premier modèle garde du temps pour le secours.
+    const timeout = i === models.length - 1 ? remaining : Math.min(remaining - 18_000, 34_000);
+    if (timeout < 5_000) continue;
+    try {
+      return await geminiRequest(models[i], body, timeout);
+    } catch (error) {
+      lastError = error;
+      const status = (error as { status?: number }).status;
+      if (status !== 503 && status !== 429) throw error;
+      console.warn(`[ai] ${models[i]} indisponible, essai du modèle suivant`);
+    }
+  }
+  throw lastError ?? new ProviderHttpError(503, "Gemini : aucun modèle disponible");
 }
 
 async function callGemini(req: StructuredRequest<unknown>): Promise<unknown> {
@@ -124,7 +159,7 @@ async function callGemini(req: StructuredRequest<unknown>): Promise<unknown> {
     JSON.stringify(req.jsonSchema),
   ].join("\n");
 
-  const data = await geminiRequest(GEMINI_MODEL, {
+  const data = await geminiWithFallback({
     systemInstruction: { parts: [{ text: instructions }] },
     contents: [{ role: "user", parts: [{ text: req.prompt }] }],
     generationConfig: {
@@ -161,8 +196,7 @@ export async function generateStructured<T>(req: StructuredRequest<T>): Promise<
     return await attempt();
   } catch (error) {
     // Réponse inutilisable ou surcharge passagère : un second essai suffit le plus souvent.
-    const status = (error as { status?: number }).status;
-    if (error instanceof AiResponseError || status === 502 || status === 503) {
+    if (error instanceof AiResponseError && provider === "anthropic") {
       console.warn("[ai] nouvel essai après", error);
       return attempt();
     }

@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "./db";
-import { AiResponseError, GEMINI_MODEL, geminiRequest } from "./ai";
+import { AiResponseError, geminiRequest, geminiWithFallback } from "./ai";
 import { LANGUAGES, type Lang } from "./languages";
 
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-preview";
@@ -43,7 +43,7 @@ export async function synthesize(text: string, lang: Lang): Promise<Buffer> {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } } },
     },
-  });
+  }, 25_000);
 
   const part = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
   if (!part?.inlineData?.data) throw new AiResponseError("La voix n'a pas pu être générée.");
@@ -59,7 +59,7 @@ export async function synthesize(text: string, lang: Lang): Promise<Buffer> {
 /** Transcription d'un enregistrement du micro (WAV en base64) par Gemini. */
 export async function transcribe(audioBase64: string, lang: Lang): Promise<string> {
   const name = LANGUAGES[lang].nativeName;
-  const data = await geminiRequest(GEMINI_MODEL, {
+  const data = await geminiWithFallback({
     contents: [
       {
         role: "user",
