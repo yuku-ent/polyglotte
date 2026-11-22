@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-noto-arabic), "Geeza Pro", "Arial", serif;
+
+  --animate-pop: pop 0.25s ease-out;
+  @keyframes pop {
+    from {
+      transform: translateY(8px) scale(0.96);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+}
+
+/* Couleur d'accent selon la langue étudiée */
+:root,
+[data-lang="en"] {
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #eff6ff;
+}
+[data-lang="es"] {
+  --accent: #e0531f;
+  --accent-strong: #b8410f;
+  --accent-soft: #fff4ed;
+}
+[data-lang="ar"] {
+  --accent: #0f8a5f;
+  --accent-strong: #0a6b49;
+  --accent-soft: #ecfdf5;
+}
+
+html {
+  background: #fafaf9;
+  color: #1c1917;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

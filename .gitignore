@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environnement et base locale
+.env
+.env.local
+prisma/*.db
+prisma/*.db-journal
+
+# Divers
+.DS_Store
+npm-debug.log*
+.vscode/*
+!.vscode/extensions.json
