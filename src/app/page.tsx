@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useProfile } from "@/components/providers";
+import { useProfile, useVoiceSettings } from "@/components/providers";
 import { Badge, ErrorBox, Panel, Spinner, cx } from "@/components/ui";
 import { LANGUAGES, LEVELS, LEVEL_DESCRIPTIONS, type Level } from "@/lib/languages";
 
@@ -44,6 +44,7 @@ function MinutesRing({ value, min }: { value: number; min: number }) {
 export default function Home() {
   const router = useRouter();
   const { data, error, refresh, lang, level, variety, minutesToday, updateLanguage, updateProfile } = useProfile();
+  const voiceSettings = useVoiceSettings();
 
   useEffect(() => {
     if (data && !data.profile.onboarded) router.replace("/bienvenue");
@@ -260,6 +261,25 @@ export default function Home() {
               </option>
             ))}
           </select>
+
+          <label className="mt-4 block text-sm font-medium text-stone-700" htmlFor="voice">
+            Voix
+          </label>
+          <select
+            id="voice"
+            value={voiceSettings.mode}
+            onChange={(e) => voiceSettings.setMode(e.target.value as "fast" | "natural")}
+            className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-3 py-2"
+          >
+            <option value="fast">Rapide : voix du navigateur, instantanée</option>
+            <option value="natural" disabled={!voiceSettings.naturalAvailable}>
+              Naturelle : voix IA, plus lente à venir
+            </option>
+          </select>
+          <p className="mt-1 text-xs text-stone-500">
+            Si la voix rapide est muette, installe la voix de la langue sur ton ordinateur (Windows : Paramètres &gt; Heure et
+            langue &gt; Voix) ou passe en voix naturelle.
+          </p>
         </Panel>
       </div>
 

@@ -230,14 +230,56 @@ export function useProfile() {
 type SpeechContextValue = ReturnType<typeof useVoicePlayer>;
 const SpeechContext = createContext<SpeechContextValue | null>(null);
 
+export type VoiceMode = "fast" | "natural";
+const VOICE_MODE_KEY = "polyglotte:voice";
+
+type VoiceSettings = { mode: VoiceMode; setMode: (mode: VoiceMode) => void; naturalAvailable: boolean };
+const VoiceSettingsContext = createContext<VoiceSettings | null>(null);
+
+/**
+ * Voix rapide (navigateur, instantanée) par défaut.
+ * Voix naturelle (IA) en option : plus belle, mais il faut attendre qu'elle soit générée.
+ */
 export function SpeechProvider({ children }: { children: React.ReactNode }) {
   const { data } = useProfile();
-  const voice = useVoicePlayer(Boolean(data?.voice.natural));
-  return <SpeechContext.Provider value={voice}>{children}</SpeechContext.Provider>;
+  const [mode, setModeState] = useState<VoiceMode>("fast");
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(VOICE_MODE_KEY) === "natural") setModeState("natural");
+    } catch {
+      /* stockage indisponible */
+    }
+  }, []);
+
+  const setMode = useCallback((next: VoiceMode) => {
+    setModeState(next);
+    try {
+      localStorage.setItem(VOICE_MODE_KEY, next);
+    } catch {
+      /* stockage indisponible */
+    }
+  }, []);
+
+  const naturalAvailable = Boolean(data?.voice.natural);
+  const voice = useVoicePlayer(naturalAvailable && mode === "natural");
+  const settings = useMemo(() => ({ mode, setMode, naturalAvailable }), [mode, setMode, naturalAvailable]);
+
+  return (
+    <VoiceSettingsContext.Provider value={settings}>
+      <SpeechContext.Provider value={voice}>{children}</SpeechContext.Provider>
+    </VoiceSettingsContext.Provider>
+  );
 }
 
 export function useTTS() {
   const ctx = useContext(SpeechContext);
   if (!ctx) throw new Error("useTTS doit être utilisé dans <SpeechProvider>");
+  return ctx;
+}
+
+export function useVoiceSettings() {
+  const ctx = useContext(VoiceSettingsContext);
+  if (!ctx) throw new Error("useVoiceSettings doit être utilisé dans <SpeechProvider>");
   return ctx;
 }
